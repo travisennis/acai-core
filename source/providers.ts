@@ -98,6 +98,17 @@ export type ModelName =
 	| `openrouter:${OpenRouterModel}`
 	| `google:${GoogleModel}`;
 
+export const Models: ModelName[] = [
+  "anthropic:sonnet",
+  "anthropic:haiku",
+  "openai:gpt-4o",
+  "openai:gpt-4o-mini",
+  "openai:o1",
+  "openai:o1-mini",
+  "google:pro",
+  "google:flash",
+];
+
 export function languageModel(input: ModelName) {
 	return registry.languageModel(input);
 }
