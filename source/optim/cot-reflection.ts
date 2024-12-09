@@ -3,24 +3,24 @@ import { generateText, LanguageModel } from "ai";
 type Section = "thinking" | "reflection" | "adjustments" | "output";
 
 interface CoTReflectionResult {
-	output: string;
-	thinking: string;
-	reflection: string;
-	adjustments: string;
-	completionTokens: number;
+  output: string;
+  thinking: string;
+  reflection: string;
+  adjustments: string;
+  completionTokens: number;
 }
 
 export class CoTReflection {
-	private systemPrompt: string | undefined;
-	private model: LanguageModel;
+  private systemPrompt: string | undefined;
+  private model: LanguageModel;
 
-	constructor(model: LanguageModel, systemPrompt?: string) {
-		this.systemPrompt = systemPrompt;
-		this.model = model;
-	}
+  constructor(model: LanguageModel, systemPrompt?: string) {
+    this.systemPrompt = systemPrompt;
+    this.model = model;
+  }
 
-	async send(initialQuery: string): Promise<CoTReflectionResult> {
-		const cotPrompt = `
+  async send(initialQuery: string): Promise<CoTReflectionResult> {
+    const cotPrompt = `
           ${this.systemPrompt}
 
           You are an AI assistant that uses a Chain of Thought (CoT) approach with reflection to answer queries. Follow these steps:
@@ -49,38 +49,38 @@ export class CoTReflection {
           </output>
         `;
 
-		// Make the API call
-		const { text, usage } = await generateText({
-			model: this.model,
-			maxTokens: 4096,
-			system: cotPrompt.trim(),
-			prompt: initialQuery,
-		});
+    // Make the API call
+    const { text, usage } = await generateText({
+      model: this.model,
+      maxTokens: 4096,
+      system: cotPrompt.trim(),
+      prompt: initialQuery,
+    });
 
-		console.log(text);
+    console.log(text);
 
-		const thinking = this.extractSection(text, "thinking");
-		const reflection = this.extractSection(text, "reflection");
-		const adjustments = this.extractSection(text, "adjustments");
-		const output = this.extractSection(text, "output");
+    const thinking = this.extractSection(text, "thinking");
+    const reflection = this.extractSection(text, "reflection");
+    const adjustments = this.extractSection(text, "adjustments");
+    const output = this.extractSection(text, "output");
 
-		return {
-			output,
-			thinking,
-			reflection,
-			adjustments,
-			completionTokens: usage.completionTokens,
-		};
-	}
+    return {
+      output,
+      thinking,
+      reflection,
+      adjustments,
+      completionTokens: usage.completionTokens,
+    };
+  }
 
-	extractSection(text: string, tag: Section): string {
-		const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\/${tag}>`, "i");
-		const match = text.match(regex);
+  extractSection(text: string, tag: Section): string {
+    const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\/${tag}>`, "i");
+    const match = text.match(regex);
 
-		if (match?.[1]) {
-			return match[1].trim();
-		}
+    if (match?.[1]) {
+      return match[1].trim();
+    }
 
-		return `No ${tag} process provided.`;
-	}
+    return `No ${tag} process provided.`;
+  }
 }
