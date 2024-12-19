@@ -1,23 +1,26 @@
-import { generateText } from "ai";
-import { languageModel, ModelName } from "../providers.ts";
+import { type LanguageModel, generateText } from "ai";
 
-export async function mixtureOfAgents(
-  model: ModelName,
-  systemPrompt: string,
-  initialQuery: string,
-): Promise<[string, number]> {
+export async function mixtureOfAgents({
+  model,
+  system,
+  prompt,
+}: {
+  model: LanguageModel;
+  system?: string;
+  prompt: string;
+}): Promise<[string, number]> {
   console.info(`Starting mixtureOfAgents function with model: ${model}`);
   let moaCompletionTokens = 0;
 
-  console.debug(`Generating initial completions for query: ${initialQuery}`);
+  console.debug(`Generating initial completions for query: ${prompt}`);
   const initialResponse = await Promise.all(
     new Array(3).fill(0).map((_) => {
       return generateText({
-        model: languageModel(model),
+        model: model,
         maxTokens: 4096,
         temperature: 1.0,
-        system: systemPrompt,
-        prompt: initialQuery,
+        system: system,
+        prompt: prompt,
       });
     }),
   );
@@ -26,13 +29,14 @@ export async function mixtureOfAgents(
   moaCompletionTokens += initialResponse.reduce((prev, curr) => {
     return prev + curr.usage.completionTokens;
   }, 0);
+
   console.info(
     `Generated ${completions.length} initial completions. Tokens used: ${moaCompletionTokens}`,
   );
-
   console.debug("Preparing critique prompt");
+
   const critiquePrompt = `
-    Original query: ${initialQuery}
+    Original query: ${prompt}
 
     I will present you with three candidate responses to the original query. Please analyze and critique each response, discussing their strengths and weaknesses. Provide your analysis for each candidate separately.
 
@@ -50,10 +54,10 @@ export async function mixtureOfAgents(
 
   console.debug("Generating critiques");
   const critiqueResponse = await generateText({
-    model: languageModel(model),
+    model: model,
     maxTokens: 512,
     temperature: 0.1,
-    system: systemPrompt,
+    system: system,
     prompt: critiquePrompt,
   });
 
@@ -62,10 +66,10 @@ export async function mixtureOfAgents(
   console.info(
     `Generated critiques. Tokens used: ${critiqueResponse.usage.completionTokens}`,
   );
-
   console.debug("Preparing final prompt");
+
   const finalPrompt = `
-    Original query: ${initialQuery}
+    Original query: ${prompt}
 
     Based on the following candidate responses and their critiques, generate a final response to the original query.
 
@@ -86,10 +90,10 @@ export async function mixtureOfAgents(
 
   console.debug("Generating final response");
   const finalResponse = await generateText({
-    model: languageModel(model),
+    model: model,
     maxTokens: 8192,
     temperature: 0.1,
-    system: systemPrompt,
+    system: system,
     prompt: finalPrompt,
   });
 
@@ -97,7 +101,7 @@ export async function mixtureOfAgents(
   console.info(
     `Generated final response. Tokens used: ${finalResponse.usage.completionTokens}`,
   );
-
   console.info(`Total completion tokens used: ${moaCompletionTokens}`);
+
   return [finalResponse.text, moaCompletionTokens];
 }

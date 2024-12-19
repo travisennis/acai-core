@@ -1,14 +1,14 @@
-import { generateText, LanguageModel } from "ai";
+import { type LanguageModel, generateText } from "ai";
 
 class PlanSearch {
   private model: LanguageModel;
-  private systemPrompt: string;
+  private systemPrompt: string | undefined;
   private language: string;
 
   constructor(
     model: LanguageModel,
-    systemPrompt: string,
-    programmingLanguage = "typescript",
+    systemPrompt?: string,
+    programmingLanguage: string = "typescript",
   ) {
     this.systemPrompt = systemPrompt;
     this.model = model;
@@ -17,7 +17,7 @@ class PlanSearch {
 
   async generateObservations(
     problem: string,
-    numObservations = 3,
+    numObservations: number = 3,
   ): Promise<string[]> {
     const prompt = `You are an expert ${this.language} programmer. You will be given a competitive programming question
 (problem specification). You will return several useful, non-obvious, and correct observations
@@ -43,7 +43,7 @@ Please provide ${numObservations} observations.`;
   async generateDerivedObservations(
     problem: string,
     observations: string[],
-    numNewObservations = 2,
+    numNewObservations: number = 2,
   ): Promise<string[]> {
     const prompt = `You are an expert ${this.language} programmer. You will be given a competitive programming question
 (problem specification) and several correct observations about the problem.
@@ -122,40 +122,35 @@ Please implement the solution in ${this.language}.`;
 
   async solve(
     problem: string,
-    numInitialObservations = 3,
-    numDerivedObservations = 2,
+    numInitialObservations: number = 3,
+    numDerivedObservations: number = 2,
   ): Promise<[string, string]> {
     const initialObservations = await this.generateObservations(
       problem,
       numInitialObservations,
     );
-
     const derivedObservations = await this.generateDerivedObservations(
       problem,
       initialObservations,
       numDerivedObservations,
     );
-
     const allObservations = [...initialObservations, ...derivedObservations];
-
     const naturalLanguageSolution = await this.generateSolution(
       problem,
       allObservations,
     );
-
     const implementation = await this.implementSolution(
       problem,
       naturalLanguageSolution,
     );
-
     return [naturalLanguageSolution, implementation];
   }
 
   async solveMultiple(
     problem: string,
     n: number,
-    numInitialObservations = 3,
-    numDerivedObservations = 2,
+    numInitialObservations: number = 3,
+    numDerivedObservations: number = 2,
   ): Promise<string[]> {
     const solutions: string[] = [];
     for (let i = 0; i < n; i++) {
@@ -170,13 +165,19 @@ Please implement the solution in ${this.language}.`;
   }
 }
 
-export function plansearch(
-  model: LanguageModel,
-  systemPrompt: string,
-  initialQuery: string,
+export function plansearch({
+  model,
+  system,
+  prompt,
   language = "typescript",
   n = 1,
-): Promise<string[]> {
-  const planner = new PlanSearch(model, systemPrompt, language);
-  return planner.solveMultiple(initialQuery, n);
+}: {
+  model: LanguageModel;
+  system?: string;
+  prompt: string;
+  language?: string;
+  n?: number;
+}): Promise<string[]> {
+  const planner = new PlanSearch(model, system, language);
+  return planner.solveMultiple(prompt, n);
 }

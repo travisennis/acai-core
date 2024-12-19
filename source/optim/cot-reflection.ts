@@ -1,25 +1,15 @@
-import { generateText, LanguageModel } from "ai";
+import { type LanguageModel, generateText } from "ai";
 
-type Section = "thinking" | "reflection" | "adjustments" | "output";
-
-interface CoTReflectionResult {
-  output: string;
-  thinking: string;
-  reflection: string;
-  adjustments: string;
-  completionTokens: number;
-}
-
-export class CoTReflection {
-  private systemPrompt: string | undefined;
+class CoTReflection {
   private model: LanguageModel;
+  private systemPrompt?: string;
 
   constructor(model: LanguageModel, systemPrompt?: string) {
-    this.systemPrompt = systemPrompt;
     this.model = model;
+    this.systemPrompt = systemPrompt;
   }
 
-  async send(initialQuery: string): Promise<CoTReflectionResult> {
+  async send(initialQuery: string) {
     const cotPrompt = `
           ${this.systemPrompt}
 
@@ -57,8 +47,6 @@ export class CoTReflection {
       prompt: initialQuery,
     });
 
-    console.log(text);
-
     const thinking = this.extractSection(text, "thinking");
     const reflection = this.extractSection(text, "reflection");
     const adjustments = this.extractSection(text, "adjustments");
@@ -73,14 +61,26 @@ export class CoTReflection {
     };
   }
 
-  extractSection(text: string, tag: Section): string {
+  private extractSection(text: string, tag: string): string {
     const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\/${tag}>`, "i");
     const match = text.match(regex);
-
     if (match?.[1]) {
       return match[1].trim();
     }
-
     return `No ${tag} process provided.`;
   }
+}
+
+export async function cot({
+  model,
+  system,
+  prompt,
+}: {
+  model: LanguageModel;
+  system?: string;
+  prompt: string;
+}): Promise<[string, number]> {
+  const instance = new CoTReflection(model, system);
+  const result = await instance.send(prompt);
+  return [result.output, result.completionTokens];
 }

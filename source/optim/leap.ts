@@ -1,22 +1,13 @@
-import { generateText } from "ai";
-import { languageModel, ModelName } from "../providers.ts";
-
-interface Example {
-  question: string;
-  answer: string;
-}
-
-type ExampleTuple = [string, string];
-type MistakeTuple = [string, string, string, string];
+import { type LanguageModel, generateText } from "ai";
 
 class LEAP {
-  private model: ModelName;
-  private systemPrompt: string;
+  private model: LanguageModel;
+  private systemPrompt: string | undefined;
   private lowLevelPrinciples: string[];
   private highLevelPrinciples: string[];
   public leapCompletionTokens: number;
 
-  constructor(model: ModelName, systemPrompt: string) {
+  constructor(model: LanguageModel, systemPrompt?: string) {
     this.model = model;
     this.systemPrompt = systemPrompt;
     this.lowLevelPrinciples = [];
@@ -31,9 +22,9 @@ class LEAP {
 
   private async extractExamplesFromQuery(
     initialQuery: string,
-  ): Promise<ExampleTuple[]> {
+  ): Promise<[string, string][]> {
     const { text, usage } = await generateText({
-      model: languageModel(this.model),
+      model: this.model,
       maxTokens: 4096,
       temperature: 1.0,
       system: this.systemPrompt,
@@ -59,16 +50,18 @@ class LEAP {
 
     this.leapCompletionTokens += usage.completionTokens;
     const examplesStr = this.extractOutput(text);
+    let examples: [string, string][] = [];
 
-    let examples: ExampleTuple[] = [];
     if (examplesStr) {
       try {
-        const examplesList = JSON.parse(examplesStr) as Example[];
-        examples = examplesList.map((example) => [
-          example.question,
-          example.answer,
-        ]);
-      } catch (error) {
+        const examplesList = JSON.parse(examplesStr);
+        examples = examplesList.map(
+          (example: { question: string; answer: string }) => [
+            example.question,
+            example.answer,
+          ],
+        );
+      } catch (_error) {
         // Failed to parse examples JSON, using empty list
       }
     }
@@ -77,13 +70,13 @@ class LEAP {
   }
 
   private async generateMistakes(
-    examples: ExampleTuple[],
-  ): Promise<MistakeTuple[]> {
-    const mistakes: MistakeTuple[] = [];
+    examples: [string, string][],
+  ): Promise<[string, string, string, string][]> {
+    const mistakes: [string, string, string, string][] = [];
 
     for (const [question, correctAnswer] of examples) {
       const { text, usage } = await generateText({
-        model: languageModel(this.model),
+        model: this.model,
         maxTokens: 4096,
         temperature: 0.7,
         system: this.systemPrompt,
@@ -109,11 +102,12 @@ class LEAP {
         ]);
       }
     }
+
     return mistakes;
   }
 
   private async generateLowLevelPrinciples(
-    mistakes: MistakeTuple[],
+    mistakes: [string, string, string, string][],
   ): Promise<string[]> {
     for (const [
       question,
@@ -122,7 +116,7 @@ class LEAP {
       correctAnswer,
     ] of mistakes) {
       const { text, usage } = await generateText({
-        model: languageModel(this.model),
+        model: this.model,
         maxTokens: 4096,
         temperature: 1.0,
         system: this.systemPrompt,
@@ -151,9 +145,8 @@ class LEAP {
 
   private async generateHighLevelPrinciples(): Promise<string[]> {
     const principlesText = this.lowLevelPrinciples.join("\n");
-
     const { text, usage } = await generateText({
-      model: languageModel(this.model),
+      model: this.model,
       maxTokens: 4096,
       temperature: 1.0,
       system: this.systemPrompt,
@@ -177,9 +170,8 @@ class LEAP {
 
   private async applyPrinciples(query: string): Promise<string> {
     const principlesText = this.highLevelPrinciples.join("\n");
-
     const { text, usage } = await generateText({
-      model: languageModel(this.model),
+      model: this.model,
       maxTokens: 4096,
       temperature: 1.0,
       system: this.systemPrompt,
@@ -196,9 +188,8 @@ class LEAP {
     return text;
   }
 
-  public async solve(initialQuery: string): Promise<string> {
+  async solve(initialQuery: string): Promise<string> {
     const examples = await this.extractExamplesFromQuery(initialQuery);
-
     if (examples.length === 0) {
       return this.applyPrinciples(initialQuery);
     }
@@ -206,17 +197,20 @@ class LEAP {
     const mistakes = await this.generateMistakes(examples);
     await this.generateLowLevelPrinciples(mistakes);
     await this.generateHighLevelPrinciples();
-
     return this.applyPrinciples(initialQuery);
   }
 }
 
-export async function leap(
-  model: ModelName,
-  systemPrompt: string,
-  initialQuery: string,
-): Promise<[string, number]> {
-  const leapSolver = new LEAP(model, systemPrompt);
-  const result = await leapSolver.solve(initialQuery);
+export async function leap({
+  model,
+  system,
+  prompt,
+}: {
+  model: LanguageModel;
+  system?: string;
+  prompt: string;
+}): Promise<[string, number]> {
+  const leapSolver = new LEAP(model, system);
+  const result = await leapSolver.solve(prompt);
   return [result, leapSolver.leapCompletionTokens];
 }
