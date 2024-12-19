@@ -4,3 +4,4 @@ export * as tools from "./tools/index.ts";
 export * from "./providers.ts";
 export * from "./providerTypes.ts";
 export * from "./wrapLanguageModel.ts";
+export * from "./mcp.ts";
