@@ -7,7 +7,11 @@
     "types": "./dist/index.d.ts",
     "default": "./dist/index.js"
   },
-  "keywords": ["cli", "ai", "llm"],
+  "keywords": [
+    "cli",
+    "ai",
+    "llm"
+  ],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
@@ -27,15 +31,20 @@
     "check": "npx npm-check-updates  --interactive --format group"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.4",
-    "@ai-sdk/azure": "^1.0.9",
-    "@ai-sdk/google": "^1.0.5",
-    "@ai-sdk/openai": "^1.0.7",
-    "ai": "^4.0.13"
+    "@ai-sdk/anthropic": "^1.0.5",
+    "@ai-sdk/azure": "^1.0.12",
+    "@ai-sdk/google": "^1.0.11",
+    "@ai-sdk/openai": "^1.0.10",
+    "ai": "^4.0.20",
+    "diff": "^7.0.0",
+    "ignore": "^6.0.2",
+    "minimatch": "^10.0.1",
+    "simple-git": "^3.27.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
-    "@types/node": "^22.10.1",
+    "@types/diff": "^6.0.0",
+    "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
