@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import { tool } from "ai";
 import path from "node:path";
+import { tool } from "ai";
 import simpleGit from "simple-git";
 import { z } from "zod";
 
@@ -38,6 +38,30 @@ const sanitizePath = (workingDir: string, userPath: string): string => {
 
 export const createGitTools = async ({ workingDir }: GitOptions) => {
   return {
+    gitNewBranch: tool({
+      description: "A tool to create a new git branch and switch to it.",
+      parameters: z.object({
+        path: z.string().describe("The path to the git repo."),
+        name: z.string().describe("The name of the git branch."),
+      }),
+      execute: async ({ path, name }) => {
+        try {
+          const baseDir = sanitizePath(workingDir, path);
+          const git = simpleGit({ baseDir });
+
+          // Check if there are any changes to commit
+          const status = await git.status();
+          if (status.files.length > 0) {
+            return "Repo is not clean.";
+          }
+
+          await git.checkoutLocalBranch(name);
+          return `Branch created successfully: ${name}`;
+        } catch (error) {
+          return `Error creating branch: ${(error as Error).message}`;
+        }
+      },
+    }),
     gitCommit: tool({
       description:
         "Commits a new git changeset for the given files with the provided commit message. It will stage the files given if they aren't already staged. The commit message should adhere to the Conventional Commits standard.",
