@@ -25,19 +25,49 @@ class MCTSNode {
   ) {}
 }
 
-class Graph {
-  setNode(id: string): void {
-    throw new Error("Method not implemented.");
+class Graph<T> {
+  private adjacencyList: Map<T, T[]>;
+
+  constructor() {
+    this.adjacencyList = new Map();
   }
 
-  setEdge(id: string, id1: string): void {
-    throw new Error("Method not implemented.");
+  setNode(node: T): void {
+    this.addVertex(node);
+  }
+
+  addVertex(vertex: T): void {
+    if (!this.adjacencyList.has(vertex)) {
+      this.adjacencyList.set(vertex, []);
+    }
+  }
+
+  setEdge(vertex1: T, vertex2: T): void {
+    this.addEdge(vertex1, vertex2);
+  }
+
+  addEdge(vertex1: T, vertex2: T): void {
+    this.addVertex(vertex1);
+    this.addVertex(vertex2);
+
+    this.adjacencyList.get(vertex1)?.push(vertex2);
+    this.adjacencyList.get(vertex2)?.push(vertex1); // For undirected graph
+  }
+
+  getNeighbors(vertex: T): T[] | undefined {
+    return this.adjacencyList.get(vertex);
+  }
+
+  print(): void {
+    for (const [vertex, neighbors] of this.adjacencyList.entries()) {
+      console.log(`${vertex}: ${neighbors.join(", ")}`);
+    }
   }
 }
 
 class MCTS {
   private root: MCTSNode | null = null;
-  private graph = new Graph();
+  private graph = new Graph<string>();
   private nodeLabels: Record<string, string> = {};
   public completionTokens = 0;
 
