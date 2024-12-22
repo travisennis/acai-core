@@ -7,139 +7,244 @@ interface EvaluationMetrics {
   engagement: number;
 }
 
+// Immutable state representation for better tree search
 class DialogueState {
-  constructor(
-    public systemPrompt: string,
-    public conversationHistory: CoreMessage[],
-    public currentQuery: string,
-    public depth: number = 0,
+  private constructor(
+    public readonly systemPrompt: string,
+    public readonly conversationHistory: ReadonlyArray<CoreMessage>,
+    public readonly currentQuery: string,
+    public readonly depth: number = 0,
     public metrics?: EvaluationMetrics,
   ) {}
 
-  clone(): DialogueState {
+  static create(
+    systemPrompt: string,
+    history: CoreMessage[],
+    query: string,
+    depth = 0,
+    metrics?: EvaluationMetrics,
+  ): DialogueState {
     return new DialogueState(
-      this.systemPrompt,
-      [...this.conversationHistory],
-      this.currentQuery,
-      this.depth,
-      this.metrics,
+      systemPrompt,
+      Object.freeze([...history]),
+      query,
+      depth,
+      metrics,
     );
   }
 
-  addMessage(role: "user" | "assistant", content: string): void {
-    this.conversationHistory.push({ role, content });
-    this.depth++;
+  withNewMessage(role: "user" | "assistant", content: string): DialogueState {
+    return DialogueState.create(
+      this.systemPrompt,
+      [...this.conversationHistory, { role, content }],
+      this.currentQuery,
+      this.depth + 1,
+      this.metrics,
+    );
   }
 
   getLastResponse(): string | null {
     const lastMessage =
       this.conversationHistory[this.conversationHistory.length - 1];
-    return lastMessage?.role === "assistant" ? lastMessage.content : null;
+    return lastMessage?.role === "assistant"
+      ? (lastMessage.content as string)
+      : null;
+  }
+
+  // Hash function for state comparison
+  hash(): string {
+    return JSON.stringify({
+      history: this.conversationHistory,
+      query: this.currentQuery,
+      depth: this.depth,
+    });
   }
 }
 
 class MCTSNode {
-  public id: string;
-  public children: MCTSNode[];
-  public visits: number;
-  public totalValue: number;
-  public isFullyExpanded: boolean;
+  public readonly id: string;
+  public readonly children: MCTSNode[];
+  private readonly stateHash: string;
+
+  // RAVE (Rapid Action Value Estimation) statistics
+  private raveVisits: number;
+  private raveValue: number;
 
   constructor(
-    public state: DialogueState,
-    public parent: MCTSNode | null = null,
-    public action: string | null = null,
+    public readonly state: DialogueState,
+    public readonly parent: MCTSNode | null = null,
+    public readonly action: string | null = null,
+    public visits = 0,
+    private totalValue = 0,
+    public isFullyExpanded = false,
   ) {
     this.id = randomUUID();
     this.children = [];
-    this.visits = 0;
-    this.totalValue = 0;
-    this.isFullyExpanded = false;
+    this.stateHash = state.hash();
+    this.raveVisits = 0;
+    this.raveValue = 0;
   }
 
-  get averageValue(): number {
+  addVisit(value: number): void {
+    this.visits++;
+    this.totalValue += value;
+  }
+
+  addRaveData(value: number): void {
+    this.raveVisits++;
+    this.raveValue += value;
+  }
+
+  getVisits(): number {
+    return this.visits;
+  }
+
+  getTotalValue(): number {
+    return this.totalValue;
+  }
+
+  getAverageValue(): number {
     return this.visits === 0 ? 0 : this.totalValue / this.visits;
   }
 
-  get ucb1Score(): number {
-    if (this.visits === 0) return Infinity;
-    if (!this.parent) return this.averageValue;
+  getRaveValue(): number {
+    return this.raveVisits === 0 ? 0 : this.raveValue / this.raveVisits;
+  }
 
-    const explorationConstant = Math.sqrt(2);
-    return (
-      this.averageValue +
-      explorationConstant *
-        Math.sqrt(Math.log(this.parent.visits) / this.visits)
-    );
+  // PUCT (Predictor + UCT) formula for selection
+  getPUCTScore(totalParentVisits: number, priorProbability: number): number {
+    const C = 1.5; // Exploration constant
+    const exploitation = this.visits === 0 ? 0 : this.totalValue / this.visits;
+    const exploration =
+      (C * priorProbability * Math.sqrt(totalParentVisits)) / (1 + this.visits);
+
+    // Mix RAVE with UCT
+    const beta =
+      this.visits /
+      (this.visits +
+        this.raveVisits +
+        4 * priorProbability * totalParentVisits);
+    const raveComponent = this.getRaveValue();
+
+    return beta * exploitation + (1 - beta) * raveComponent + exploration;
   }
 }
 
 class MCTS {
-  private root: MCTSNode;
+  private readonly transpositionTable: Map<string, MCTSNode>;
+  private readonly actionPriors: Map<string, number>;
   public completionTokens: number;
-  private readonly maxDepth: number;
-  private readonly maxChildren: number;
 
   constructor(
-    private model: LanguageModel,
-    private simulationDepth: number,
-    private numSimulations: number,
-    options: {
-      maxDepth?: number;
-      maxChildren?: number;
-    } = {},
+    private readonly model: LanguageModel,
+    private readonly simulationDepth: number,
+    private readonly numSimulations: number,
+    private readonly options: {
+      maxDepth: number;
+      maxChildren: number;
+      explorationConstant: number;
+      temperature: number;
+      useRAVE: boolean;
+    },
   ) {
     this.completionTokens = 0;
-    this.maxDepth = options.maxDepth ?? 10;
-    this.maxChildren = options.maxChildren ?? 3;
+    this.transpositionTable = new Map();
+    this.actionPriors = new Map();
   }
 
   async findBestResponse(initialState: DialogueState): Promise<string> {
-    this.root = new MCTSNode(initialState);
+    const root = new MCTSNode(initialState);
+    this.transpositionTable.set(initialState.hash(), root);
 
-    for (let i = 0; i < this.numSimulations; i++) {
-      const selectedNode = await this.select(this.root);
-      if (!this.isTerminal(selectedNode.state)) {
-        const expandedNode = await this.expand(selectedNode);
-        const value = await this.simulate(expandedNode);
-        this.backpropagate(expandedNode, value);
-      }
-    }
+    // Virtual loss implementation
+    const inProgress = new Set<string>();
 
-    const bestChild = this.getBestChild(this.root);
-    return bestChild.action ?? "";
+    // Parallel simulations with virtual loss
+    const simulationPromises = Array(this.numSimulations)
+      .fill(null)
+      .map(async () => {
+        const path = await this.select(root, inProgress);
+        const leaf = path[path.length - 1];
+
+        if (!this.isTerminal(leaf.state)) {
+          const expandedNode = await this.expand(leaf);
+          const value = await this.simulate(expandedNode);
+          this.backpropagate(path, value);
+        }
+      });
+
+    await Promise.all(simulationPromises);
+
+    return this.getBestAction(root);
   }
 
-  private async select(node: MCTSNode): Promise<MCTSNode> {
+  private async select(
+    node: MCTSNode,
+    inProgress: Set<string>,
+  ): Promise<MCTSNode[]> {
+    const path: MCTSNode[] = [];
     let current = node;
 
     while (!this.isTerminal(current.state) && current.isFullyExpanded) {
-      const children = current.children;
-      if (children.length === 0) break;
+      path.push(current);
 
-      current = children.reduce((best, child) =>
-        child.ucb1Score > best.ucb1Score ? child : best,
-      );
+      if (current.children.length === 0) break;
+
+      // Apply virtual loss
+      const nodeHash = current.state.hash();
+      if (inProgress.has(nodeHash)) {
+        continue;
+      }
+      inProgress.add(nodeHash);
+
+      // Selection using PUCT
+      current = current.children.reduce((best, child) => {
+        const totalVisits = current.getVisits();
+        const priorProb =
+          this.actionPriors.get(child.action || "") ||
+          1.0 / current.children.length;
+        return child.getPUCTScore(totalVisits, priorProb) >
+          best.getPUCTScore(
+            totalVisits,
+            this.actionPriors.get(best.action || "") ||
+              1.0 / current.children.length,
+          )
+          ? child
+          : best;
+      });
     }
 
-    return current;
+    path.push(current);
+    return path;
   }
 
   private async expand(node: MCTSNode): Promise<MCTSNode> {
     if (this.isTerminal(node.state)) return node;
 
     const actions = await this.generateActions(node.state);
-
     if (actions.length === 0) {
       node.isFullyExpanded = true;
       return node;
     }
 
-    for (const action of actions) {
-      const newState = node.state.clone();
-      newState.addMessage("assistant", action);
-      const childNode = new MCTSNode(newState, node, action);
+    // Calculate action priors using policy network (in this case, the LLM)
+    const priors = await this.calculateActionPriors(node.state, actions);
+
+    for (let i = 0; i < actions.length; i++) {
+      const action = actions[i];
+      const newState = node.state.withNewMessage("assistant", action);
+
+      // Check transposition table
+      const stateHash = newState.hash();
+      let childNode = this.transpositionTable.get(stateHash);
+
+      if (!childNode) {
+        childNode = new MCTSNode(newState, node, action);
+        this.transpositionTable.set(stateHash, childNode);
+      }
+
       node.children.push(childNode);
+      this.actionPriors.set(action, priors[i]);
     }
 
     node.isFullyExpanded = true;
@@ -147,33 +252,47 @@ class MCTS {
   }
 
   private async simulate(node: MCTSNode): Promise<number> {
-    let currentState = node.state.clone();
+    let currentState = node.state;
     let depth = 0;
+    let value = 0;
 
     while (!this.isTerminal(currentState) && depth < this.simulationDepth) {
       const actions = await this.generateActions(currentState);
       if (actions.length === 0) break;
 
-      const randomAction = actions[Math.floor(Math.random() * actions.length)];
-      currentState.addMessage("assistant", randomAction);
+      // Progressive widening
+      const numActions = Math.max(1, Math.floor(Math.sqrt(depth + 1)));
+      const selectedActions = actions.slice(0, numActions);
+
+      const randomAction =
+        selectedActions[Math.floor(Math.random() * selectedActions.length)];
+      currentState = currentState.withNewMessage("assistant", randomAction);
+
+      // Evaluate intermediate states with discount factor
+      const intermediateValue = await this.evaluate(currentState);
+      value += intermediateValue * 0.95 ** depth;
+
       depth++;
     }
 
-    return await this.evaluate(currentState);
+    // Normalize accumulated value
+    return value / (depth || 1);
   }
 
-  private backpropagate(node: MCTSNode, value: number): void {
-    let current: MCTSNode | null = node;
-    while (current) {
-      current.visits++;
-      current.totalValue += value;
-      current = current.parent;
+  private backpropagate(path: MCTSNode[], value: number): void {
+    for (const node of path.reverse()) {
+      node.addVisit(value);
+
+      // Update RAVE statistics
+      if (this.options.useRAVE) {
+        node.addRaveData(value);
+      }
     }
   }
 
   private async generateActions(state: DialogueState): Promise<string[]> {
     try {
-      const messages = [
+      const messages: CoreMessage[] = [
         ...state.conversationHistory,
         {
           role: "user",
@@ -257,14 +376,64 @@ class MCTS {
       child.visits > best.visits ? child : best,
     );
   }
+
+  private async calculateActionPriors(
+    state: DialogueState,
+    actions: string[],
+  ): Promise<number[]> {
+    try {
+      const messages: CoreMessage[] = [
+        ...state.conversationHistory,
+        {
+          role: "user",
+          content: `Rate the following potential responses in terms of their appropriateness (0-1):${actions.map((a, i) => `\n${i + 1}. ${a}`).join("")}`,
+        },
+      ];
+
+      const { text, usage } = await generateText({
+        model: this.model,
+        maxTokens: 256,
+        temperature: 0.1,
+        system: state.systemPrompt,
+        messages,
+      });
+
+      this.completionTokens += usage.completionTokens;
+
+      const scores = text
+        .split("\n")
+        .map((line) => Number.parseFloat(line.trim()))
+        .filter((score) => !Number.isNaN(score));
+
+      // Softmax normalization
+      const expScores = scores.map((score) => Math.exp(score));
+      const sum = expScores.reduce((a, b) => a + b, 0);
+      return expScores.map((score) => score / sum);
+    } catch (_error) {
+      // Uniform distribution as fallback
+      return Array(actions.length).fill(1 / actions.length);
+    }
+  }
+
+  private getBestAction(root: MCTSNode): string {
+    if (root.children.length === 0) return "";
+
+    // Use visit count for final selection (more robust than value)
+    const bestChild = root.children.reduce((best, child) =>
+      child.getVisits() > best.getVisits() ? child : best,
+    );
+
+    return bestChild.action || "";
+  }
 }
 
+// Export function remains largely the same but with expanded options
 export async function mcts({
   model,
   system = "",
   initialQuery,
-  numSimulations = 5,
-  simulationDepth = 3,
+  numSimulations = 10,
+  simulationDepth = 5,
   options = {},
 }: {
   model: LanguageModel;
@@ -275,15 +444,20 @@ export async function mcts({
   options?: {
     maxDepth?: number;
     maxChildren?: number;
+    explorationConstant?: number;
+    temperature?: number;
+    useRAVE?: boolean;
   };
 }): Promise<[string, number]> {
-  const mctsInstance = new MCTS(
-    model,
-    simulationDepth,
-    numSimulations,
-    options,
-  );
-  const initialState = new DialogueState(system, [], initialQuery);
+  const mctsInstance = new MCTS(model, simulationDepth, numSimulations, {
+    maxDepth: options.maxDepth ?? 10,
+    maxChildren: options.maxChildren ?? 3,
+    explorationConstant: options.explorationConstant ?? 1.5,
+    temperature: options.temperature ?? 0.8,
+    useRAVE: options.useRAVE ?? true,
+  });
+
+  const initialState = DialogueState.create(system, [], initialQuery);
 
   try {
     const response = await mctsInstance.findBestResponse(initialState);
