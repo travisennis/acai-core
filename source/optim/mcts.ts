@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { CoreMessage, type LanguageModel, generateText } from "ai";
+import { type CoreMessage, type LanguageModel, generateText } from "ai";
 
 class DialogueState {
   constructor(
