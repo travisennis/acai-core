@@ -39,7 +39,8 @@
     "diff": "^7.0.0",
     "ignore": "^6.0.2",
     "minimatch": "^10.0.1",
-    "simple-git": "^3.27.0"
+    "simple-git": "^3.27.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
