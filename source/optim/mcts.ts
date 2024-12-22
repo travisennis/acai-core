@@ -9,13 +9,25 @@ interface EvaluationMetrics {
 
 // Immutable state representation for better tree search
 class DialogueState {
+  readonly conversationHistory: ReadonlyArray<CoreMessage>;
+  readonly systemPrompt: string;
+  readonly currentQuery: string;
+  readonly depth: number;
+  metrics?: EvaluationMetrics;
+
   private constructor(
-    public readonly systemPrompt: string,
-    public readonly conversationHistory: ReadonlyArray<CoreMessage>,
-    public readonly currentQuery: string,
-    public readonly depth: number = 0,
-    public metrics?: EvaluationMetrics,
-  ) {}
+    systemPrompt: string,
+    conversationHistory: ReadonlyArray<CoreMessage>,
+    currentQuery: string,
+    depth = 0,
+    metrics?: EvaluationMetrics,
+  ) {
+    this.systemPrompt = systemPrompt;
+    this.conversationHistory = conversationHistory;
+    this.currentQuery = currentQuery;
+    this.depth = depth;
+    this.metrics = metrics;
+  }
 
   static create(
     systemPrompt: string,
@@ -62,25 +74,33 @@ class DialogueState {
 }
 
 class MCTSNode {
-  public readonly id: string;
-  public readonly children: MCTSNode[];
-  private readonly stateHash: string;
-
-  // RAVE (Rapid Action Value Estimation) statistics
+  readonly id: string;
+  readonly state: DialogueState;
+  readonly parent: MCTSNode | null;
+  readonly action: string | null;
+  readonly children: MCTSNode[];
+  visits: number;
+  isFullyExpanded: boolean;
+  private totalValue: number;
   private raveVisits: number;
   private raveValue: number;
 
   constructor(
-    public readonly state: DialogueState,
-    public readonly parent: MCTSNode | null = null,
-    public readonly action: string | null = null,
-    public visits = 0,
-    private totalValue = 0,
-    public isFullyExpanded = false,
+    state: DialogueState,
+    parent: MCTSNode | null = null,
+    action: string | null = null,
+    visits = 0,
+    totalValue = 0,
+    isFullyExpanded = false,
   ) {
     this.id = randomUUID();
+    this.state = state;
+    this.parent = parent;
+    this.action = action;
     this.children = [];
-    this.stateHash = state.hash();
+    this.visits = visits;
+    this.isFullyExpanded = isFullyExpanded;
+    this.totalValue = totalValue;
     this.raveVisits = 0;
     this.raveValue = 0;
   }
@@ -133,7 +153,7 @@ class MCTSNode {
 class MCTS {
   private readonly transpositionTable: Map<string, MCTSNode>;
   private readonly actionPriors: Map<string, number>;
-  public completionTokens: number;
+  completionTokens: number;
 
   constructor(
     private readonly model: LanguageModel,
@@ -154,12 +174,10 @@ class MCTS {
 
   async findBestResponse(initialState: DialogueState): Promise<string> {
     const root = new MCTSNode(initialState);
-    this.transpositionTable.set(initialState.hash(), root);
+    this.transpositionTable.set(root.state.hash(), root);
 
-    // Virtual loss implementation
     const inProgress = new Set<string>();
 
-    // Parallel simulations with virtual loss
     const simulationPromises = Array(this.numSimulations)
       .fill(null)
       .map(async () => {
@@ -175,7 +193,14 @@ class MCTS {
 
     await Promise.all(simulationPromises);
 
-    return this.getBestAction(root);
+    // Select the child with the most visits
+    if (root.children.length === 0) return "";
+
+    const bestChild = root.children.reduce((best, child) =>
+      child.getVisits() > best.getVisits() ? child : best,
+    );
+
+    return bestChild.action || "";
   }
 
   private async select(
@@ -301,7 +326,7 @@ class MCTS {
       ];
 
       const completions: string[] = [];
-      for (let i = 0; i < this.maxChildren; i++) {
+      for (let i = 0; i < this.options.maxChildren; i++) {
         const { text, usage } = await generateText({
           model: this.model,
           maxTokens: 4096,
@@ -363,17 +388,9 @@ class MCTS {
 
   private isTerminal(state: DialogueState): boolean {
     return (
-      state.depth >= this.maxDepth ||
+      state.depth >= this.options.maxDepth ||
       state.currentQuery.toLowerCase().includes("goodbye") ||
       state.currentQuery.toLowerCase().includes("thank you")
-    );
-  }
-
-  private getBestChild(node: MCTSNode): MCTSNode {
-    if (node.children.length === 0) return node;
-
-    return node.children.reduce((best, child) =>
-      child.visits > best.visits ? child : best,
     );
   }
 
@@ -414,20 +431,8 @@ class MCTS {
       return Array(actions.length).fill(1 / actions.length);
     }
   }
-
-  private getBestAction(root: MCTSNode): string {
-    if (root.children.length === 0) return "";
-
-    // Use visit count for final selection (more robust than value)
-    const bestChild = root.children.reduce((best, child) =>
-      child.getVisits() > best.getVisits() ? child : best,
-    );
-
-    return bestChild.action || "";
-  }
 }
 
-// Export function remains largely the same but with expanded options
 export async function mcts({
   model,
   system = "",
@@ -449,13 +454,20 @@ export async function mcts({
     useRAVE?: boolean;
   };
 }): Promise<[string, number]> {
-  const mctsInstance = new MCTS(model, simulationDepth, numSimulations, {
+  const mctsOptions = {
     maxDepth: options.maxDepth ?? 10,
     maxChildren: options.maxChildren ?? 3,
     explorationConstant: options.explorationConstant ?? 1.5,
     temperature: options.temperature ?? 0.8,
     useRAVE: options.useRAVE ?? true,
-  });
+  };
+
+  const mctsInstance = new MCTS(
+    model,
+    simulationDepth,
+    numSimulations,
+    mctsOptions,
+  );
 
   const initialState = DialogueState.create(system, [], initialQuery);
 
