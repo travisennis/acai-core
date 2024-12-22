@@ -1,311 +1,261 @@
 import { randomUUID } from "node:crypto";
 import { type CoreMessage, type LanguageModel, generateText } from "ai";
 
+interface EvaluationMetrics {
+  coherence: number;
+  relevance: number;
+  engagement: number;
+}
+
 class DialogueState {
   constructor(
     public systemPrompt: string,
     public conversationHistory: CoreMessage[],
     public currentQuery: string,
+    public depth: number = 0,
+    public metrics?: EvaluationMetrics,
   ) {}
 
-  toString(): string {
-    return `System: ${this.systemPrompt}\nHistory: ${this.conversationHistory}\nCurrent Query: ${this.currentQuery}`;
+  clone(): DialogueState {
+    return new DialogueState(
+      this.systemPrompt,
+      [...this.conversationHistory],
+      this.currentQuery,
+      this.depth,
+      this.metrics,
+    );
+  }
+
+  addMessage(role: "user" | "assistant", content: string): void {
+    this.conversationHistory.push({ role, content });
+    this.depth++;
+  }
+
+  getLastResponse(): string | null {
+    const lastMessage =
+      this.conversationHistory[this.conversationHistory.length - 1];
+    return lastMessage?.role === "assistant" ? lastMessage.content : null;
   }
 }
 
 class MCTSNode {
-  public id = randomUUID();
-  public children: MCTSNode[] = [];
-  public visits = 0;
-  public value = 0;
+  public id: string;
+  public children: MCTSNode[];
+  public visits: number;
+  public totalValue: number;
+  public isFullyExpanded: boolean;
 
   constructor(
     public state: DialogueState,
     public parent: MCTSNode | null = null,
-  ) {}
-}
-
-class Graph<T> {
-  private adjacencyList: Map<T, T[]>;
-
-  constructor() {
-    this.adjacencyList = new Map();
+    public action: string | null = null,
+  ) {
+    this.id = randomUUID();
+    this.children = [];
+    this.visits = 0;
+    this.totalValue = 0;
+    this.isFullyExpanded = false;
   }
 
-  setNode(node: T): void {
-    this.addVertex(node);
+  get averageValue(): number {
+    return this.visits === 0 ? 0 : this.totalValue / this.visits;
   }
 
-  addVertex(vertex: T): void {
-    if (!this.adjacencyList.has(vertex)) {
-      this.adjacencyList.set(vertex, []);
-    }
-  }
+  get ucb1Score(): number {
+    if (this.visits === 0) return Infinity;
+    if (!this.parent) return this.averageValue;
 
-  setEdge(vertex1: T, vertex2: T): void {
-    this.addEdge(vertex1, vertex2);
-  }
-
-  addEdge(vertex1: T, vertex2: T): void {
-    this.addVertex(vertex1);
-    this.addVertex(vertex2);
-
-    this.adjacencyList.get(vertex1)?.push(vertex2);
-    this.adjacencyList.get(vertex2)?.push(vertex1); // For undirected graph
-  }
-
-  getNeighbors(vertex: T): T[] | undefined {
-    return this.adjacencyList.get(vertex);
-  }
-
-  print(): void {
-    for (const [vertex, neighbors] of this.adjacencyList.entries()) {
-      console.log(`${vertex}: ${neighbors.join(", ")}`);
-    }
+    const explorationConstant = Math.sqrt(2);
+    return (
+      this.averageValue +
+      explorationConstant *
+        Math.sqrt(Math.log(this.parent.visits) / this.visits)
+    );
   }
 }
 
 class MCTS {
-  private root: MCTSNode | null = null;
-  private graph = new Graph<string>();
-  private nodeLabels: Record<string, string> = {};
-  public completionTokens = 0;
+  private root: MCTSNode;
+  public completionTokens: number;
+  private readonly maxDepth: number;
+  private readonly maxChildren: number;
 
   constructor(
     private model: LanguageModel,
     private simulationDepth: number,
-    private explorationWeight: number,
-  ) {}
+    private numSimulations: number,
+    options: {
+      maxDepth?: number;
+      maxChildren?: number;
+    } = {},
+  ) {
+    this.completionTokens = 0;
+    this.maxDepth = options.maxDepth ?? 10;
+    this.maxChildren = options.maxChildren ?? 3;
+  }
 
-  async select(node: MCTSNode): Promise<MCTSNode> {
-    console.log(
-      `Selecting node. Current node visits: ${node.visits}, value: ${node.value}`,
-    );
+  async findBestResponse(initialState: DialogueState): Promise<string> {
+    this.root = new MCTSNode(initialState);
 
-    if (!node.children.length) {
-      console.log("Node has no children. Returning current node.");
+    for (let i = 0; i < this.numSimulations; i++) {
+      const selectedNode = await this.select(this.root);
+      if (!this.isTerminal(selectedNode.state)) {
+        const expandedNode = await this.expand(selectedNode);
+        const value = await this.simulate(expandedNode);
+        this.backpropagate(expandedNode, value);
+      }
+    }
+
+    const bestChild = this.getBestChild(this.root);
+    return bestChild.action ?? "";
+  }
+
+  private async select(node: MCTSNode): Promise<MCTSNode> {
+    let current = node;
+
+    while (!this.isTerminal(current.state) && current.isFullyExpanded) {
+      const children = current.children;
+      if (children.length === 0) break;
+
+      current = children.reduce((best, child) =>
+        child.ucb1Score > best.ucb1Score ? child : best,
+      );
+    }
+
+    return current;
+  }
+
+  private async expand(node: MCTSNode): Promise<MCTSNode> {
+    if (this.isTerminal(node.state)) return node;
+
+    const actions = await this.generateActions(node.state);
+
+    if (actions.length === 0) {
+      node.isFullyExpanded = true;
       return node;
     }
 
-    const selected = node.children.reduce((prev, current) => {
-      const ucb1 =
-        current.value / (current.visits + 1e-8) +
-        this.explorationWeight *
-          Math.sqrt(Math.log(node.visits + 1) / (current.visits + 1e-8));
-
-      const prevUcb1 =
-        prev.value / (prev.visits + 1e-8) +
-        this.explorationWeight *
-          Math.sqrt(Math.log(node.visits + 1) / (prev.visits + 1e-8));
-
-      return ucb1 > prevUcb1 ? current : prev;
-    });
-
-    console.log(
-      `Selected child node. Visits: ${selected.visits}, Value: ${selected.value}`,
-    );
-    return selected;
-  }
-
-  async expand(node: MCTSNode): Promise<MCTSNode> {
-    console.log(`Expanding node. Current state: ${node.state}`);
-    const actions = await this.generateActions(node.state);
-    console.log(`Generated ${actions.length} possible actions`);
-
-    for (let i = 0; i < actions.length; i++) {
-      const action = actions[i];
-      const newState = await this.applyAction(node.state, action);
-      const child = new MCTSNode(newState, node);
-      node.children.push(child);
-
-      this.nodeLabels[child.id] =
-        `Visits: ${child.visits}\nValue: ${child.value.toFixed(2)}`;
-      this.graph.setEdge(node.id, child.id);
-
-      console.log(
-        `Created child node ${i + 1}. Action: ${action.slice(0, 50)}...`,
-      );
+    for (const action of actions) {
+      const newState = node.state.clone();
+      newState.addMessage("assistant", action);
+      const childNode = new MCTSNode(newState, node, action);
+      node.children.push(childNode);
     }
 
-    const selectedChild =
-      node.children[Math.floor(Math.random() * node.children.length)];
-    console.log(
-      `Randomly selected child node for simulation. Visits: ${selectedChild.visits}, Value: ${selectedChild.value}`,
-    );
-    return selectedChild;
+    node.isFullyExpanded = true;
+    return node.children[0];
   }
 
-  async simulate(node: MCTSNode): Promise<number> {
-    console.log(
-      `Starting simulation from node. Current query: ${node.state.currentQuery}`,
-    );
-    let state = node.state;
+  private async simulate(node: MCTSNode): Promise<number> {
+    let currentState = node.state.clone();
+    let depth = 0;
 
-    for (let i = 0; i < this.simulationDepth; i++) {
-      if (this.isTerminal(state)) {
-        console.log(`Reached terminal state at depth ${i}`);
-        break;
-      }
+    while (!this.isTerminal(currentState) && depth < this.simulationDepth) {
+      const actions = await this.generateActions(currentState);
+      if (actions.length === 0) break;
 
-      const actions = await this.generateActions(state);
-      const action = actions[Math.floor(Math.random() * actions.length)];
-      state = await this.applyAction(state, action);
-      console.log(
-        `Simulation step ${i + 1}. Action: ${action.slice(0, 50)}...`,
-      );
+      const randomAction = actions[Math.floor(Math.random() * actions.length)];
+      currentState.addMessage("assistant", randomAction);
+      depth++;
     }
 
-    const value = await this.evaluateState(state);
-    console.log(`Simulation complete. Final state value: ${value}`);
-    return value;
+    return await this.evaluate(currentState);
   }
 
-  backpropagate(node: MCTSNode, value: number): void {
-    console.log(`Starting backpropagation. Initial value: ${value}`);
-    let currentNode: MCTSNode | null = node;
-
-    while (currentNode) {
-      currentNode.visits += 1;
-      currentNode.value += value;
-      this.graph.setNode(currentNode.id);
-      this.nodeLabels[currentNode.id] =
-        `Visits: ${currentNode.visits}\nValue: ${currentNode.value.toFixed(2)}`;
-
-      console.log(
-        `Updated node. Visits: ${currentNode.visits}, New value: ${currentNode.value}`,
-      );
-      currentNode = currentNode.parent;
+  private backpropagate(node: MCTSNode, value: number): void {
+    let current: MCTSNode | null = node;
+    while (current) {
+      current.visits++;
+      current.totalValue += value;
+      current = current.parent;
     }
   }
 
   private async generateActions(state: DialogueState): Promise<string[]> {
-    console.log("Generating actions for current state");
-    const messages = [...state.conversationHistory];
-    messages.push({
-      role: "user",
-      content: state.currentQuery,
-    });
+    try {
+      const messages = [
+        ...state.conversationHistory,
+        {
+          role: "user",
+          content: state.currentQuery,
+        },
+      ];
 
-    const completions: string[] = [];
-    for (let i = 0; i < 3; i++) {
+      const completions: string[] = [];
+      for (let i = 0; i < this.maxChildren; i++) {
+        const { text, usage } = await generateText({
+          model: this.model,
+          maxTokens: 4096,
+          temperature: 0.8 + i * 0.1, // Increase temperature for diversity
+          system: state.systemPrompt,
+          messages,
+        });
+
+        this.completionTokens += usage.completionTokens;
+        completions.push(text);
+      }
+
+      return completions;
+    } catch (error) {
+      console.error("Error generating actions:", error);
+      return [];
+    }
+  }
+
+  private async evaluate(state: DialogueState): Promise<number> {
+    try {
+      const messages: CoreMessage[] = [
+        ...state.conversationHistory,
+        {
+          role: "user",
+          content: `
+            Evaluate this conversation on the following criteria:
+            1. Coherence (0-1)
+            2. Relevance (0-1)
+            3. Engagement (0-1)
+            Respond with three numbers separated by commas.
+          `,
+        },
+      ];
+
       const { text, usage } = await generateText({
         model: this.model,
-        maxTokens: 4096,
-        temperature: 1.0,
+        maxTokens: 256,
+        temperature: 0.1,
         system: state.systemPrompt,
         messages,
       });
+
       this.completionTokens += usage.completionTokens;
-      completions.push(text);
-    }
 
-    console.log(`Received ${completions.length} completions from the model`);
-    return completions;
-  }
+      const [coherence, relevance, engagement] = text
+        .split(",")
+        .map((n) => Math.max(0, Math.min(Number.parseFloat(n.trim()), 1)));
 
-  private async applyAction(
-    state: DialogueState,
-    action: string,
-  ): Promise<DialogueState> {
-    console.log(`Applying action: ${action.slice(0, 50)}...`);
-    const newHistory: CoreMessage[] = [
-      ...state.conversationHistory,
-      { role: "assistant", content: action },
-    ];
+      state.metrics = { coherence, relevance, engagement };
 
-    const messages: CoreMessage[] = [
-      ...newHistory,
-      {
-        role: "user",
-        content:
-          "Based on this conversation, what might the user ask or say next? Provide a likely user query.",
-      },
-    ];
-
-    const { text, usage } = await generateText({
-      model: this.model,
-      maxTokens: 1024,
-      temperature: 1.0,
-      system: state.systemPrompt,
-      messages,
-    });
-
-    this.completionTokens += usage.completionTokens;
-    return new DialogueState(state.systemPrompt, newHistory, text);
-  }
-
-  private isTerminal(state: DialogueState): boolean {
-    const isTerminal =
-      state.conversationHistory.length > 10 ||
-      state.currentQuery.toLowerCase().includes("goodbye");
-    console.log(`Checking if state is terminal: ${isTerminal}`);
-    return isTerminal;
-  }
-
-  private async evaluateState(state: DialogueState): Promise<number> {
-    console.log("Evaluating current state");
-    const messages: CoreMessage[] = [
-      ...state.conversationHistory,
-      {
-        role: "user",
-        content:
-          "Evaluate the quality of this conversation on a scale from 0 to 1, where 0 is poor and 1 is excellent. Consider factors such as coherence, relevance, and engagement. Respond with only a number.",
-      },
-    ];
-
-    const { text, usage } = await generateText({
-      model: this.model,
-      maxTokens: 256,
-      temperature: 0.1,
-      system: state.systemPrompt,
-      messages,
-    });
-
-    this.completionTokens += usage.completionTokens;
-
-    try {
-      const score = Math.max(0, Math.min(Number.parseFloat(text), 1));
-      console.log(`State evaluation score: ${score}`);
-      return score;
-    } catch {
-      console.warn("Failed to parse evaluation score. Using default value 0.5");
+      // Weighted average of metrics
+      return coherence * 0.3 + relevance * 0.4 + engagement * 0.3;
+    } catch (error) {
+      console.error("Error evaluating state:", error);
       return 0.5;
     }
   }
 
-  async search(
-    initialState: DialogueState,
-    numSimulations: number,
-  ): Promise<DialogueState> {
-    console.log(`Starting MCTS search with ${numSimulations} simulations`);
-
-    if (!this.root) {
-      this.root = new MCTSNode(initialState);
-      this.graph.setNode(this.root.id);
-      this.nodeLabels[this.root.id] = "Root\nVisits: 0\nValue: 0.00";
-      console.log("Created root node");
-    }
-
-    for (let i = 0; i < numSimulations; i++) {
-      console.log(`Starting simulation ${i + 1}`);
-      let node = await this.select(this.root);
-
-      if (!this.isTerminal(node.state)) {
-        node = await this.expand(node);
-      }
-
-      const value = await this.simulate(node);
-      this.backpropagate(node, value);
-    }
-
-    const bestChild = this.root.children.reduce((prev, current) =>
-      current.visits > prev.visits ? current : prev,
+  private isTerminal(state: DialogueState): boolean {
+    return (
+      state.depth >= this.maxDepth ||
+      state.currentQuery.toLowerCase().includes("goodbye") ||
+      state.currentQuery.toLowerCase().includes("thank you")
     );
+  }
 
-    console.log(
-      `Search complete. Best child node: Visits: ${bestChild.visits}, Value: ${bestChild.value}`,
+  private getBestChild(node: MCTSNode): MCTSNode {
+    if (node.children.length === 0) return node;
+
+    return node.children.reduce((best, child) =>
+      child.visits > best.visits ? child : best,
     );
-    return bestChild.state;
   }
 }
 
@@ -313,36 +263,33 @@ export async function mcts({
   model,
   system = "",
   initialQuery,
-  numSimulations = 2,
-  explorationWeight = 0.2,
-  simulationDepth = 1,
+  numSimulations = 5,
+  simulationDepth = 3,
+  options = {},
 }: {
   model: LanguageModel;
   system?: string;
   initialQuery: string;
   numSimulations?: number;
-  explorationWeight?: number;
   simulationDepth?: number;
+  options?: {
+    maxDepth?: number;
+    maxChildren?: number;
+  };
 }): Promise<[string, number]> {
-  console.log("Starting chat with MCTS");
-  console.log(
-    `Parameters: numSimulations=${numSimulations}, explorationWeight=${explorationWeight}, simulationDepth=${simulationDepth}`,
+  const mctsInstance = new MCTS(
+    model,
+    simulationDepth,
+    numSimulations,
+    options,
   );
-
-  const mctsInstance = new MCTS(model, simulationDepth, explorationWeight);
   const initialState = new DialogueState(system, [], initialQuery);
-  console.log(`Initial query: ${initialQuery}`);
 
-  const finalState = await mctsInstance.search(initialState, numSimulations);
-  const response =
-    finalState.conversationHistory.length > 0
-      ? finalState.conversationHistory[
-          finalState.conversationHistory.length - 1
-        ].content
-      : "";
-
-  console.log(
-    `MCTS chat complete. Final response: ${response.slice(0, 100)}...`,
-  );
-  return [response as string, mctsInstance.completionTokens];
+  try {
+    const response = await mctsInstance.findBestResponse(initialState);
+    return [response, mctsInstance.completionTokens];
+  } catch (error) {
+    console.error("MCTS search failed:", error);
+    throw error;
+  }
 }
