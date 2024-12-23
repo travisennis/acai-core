@@ -31,13 +31,13 @@
     "check": "npx npm-check-updates  --interactive --format group"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.5",
-    "@ai-sdk/azure": "^1.0.12",
-    "@ai-sdk/google": "^1.0.11",
-    "@ai-sdk/openai": "^1.0.10",
-    "ai": "^4.0.20",
+    "@ai-sdk/anthropic": "^1.0.6",
+    "@ai-sdk/azure": "^1.0.13",
+    "@ai-sdk/google": "^1.0.12",
+    "@ai-sdk/openai": "^1.0.11",
+    "ai": "^4.0.22",
     "diff": "^7.0.0",
-    "ignore": "^6.0.2",
+    "ignore": "^7.0.0",
     "minimatch": "^10.0.1",
     "simple-git": "^3.27.0",
     "zod": "^3.24.1"
