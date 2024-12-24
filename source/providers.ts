@@ -9,7 +9,7 @@ import {
   experimental_createProviderRegistry as createProviderRegistry,
   experimental_customProvider as customProvider,
 } from "ai";
-import { ModelName } from "./providerTypes.ts";
+import type { ModelName } from "./providerTypes.ts";
 
 const azure = customProvider({
   languageModels: {
@@ -70,6 +70,7 @@ const google = customProvider({
     pro: originalGoogle("gemini-1.5-pro-latest"),
     flash: originalGoogle("gemini-1.5-flash-latest"),
     flash2: originalGoogle("gemini-2.0-flash-exp"),
+    flash2thinking: originalGoogle("gemini-2.0-flash-thinking-exp-1219"),
   },
   fallbackProvider: originalGoogle,
 });

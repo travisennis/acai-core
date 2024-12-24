@@ -7,7 +7,7 @@ type OpenAIModel =
   | "o1"
   | "o1-mini";
 type OpenRouterModel = string;
-type GoogleModel = "pro" | "flash" | "flash2";
+type GoogleModel = "pro" | "flash" | "flash2" | "flash2thinking";
 
 export type ModelName =
   | `anthropic:${AnthropicModel}`
@@ -26,4 +26,5 @@ export const Models: ModelName[] = [
   "google:pro",
   "google:flash",
   "google:flash2",
+  "google:flash2thinking",
 ];
