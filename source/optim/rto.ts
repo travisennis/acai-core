@@ -1,7 +1,9 @@
 import { type LanguageModel, generateText } from "ai";
 
+const MD_CODE_BLOCK = /```(?:[\w-]+)?\n(.*?)```/s;
+
 export const extractCodeFromPrompt = (text: string): string => {
-  const pattern = /```(?:[\w-]+)?\n(.*?)```/s;
+  const pattern = MD_CODE_BLOCK;
   const match = text.match(pattern);
   if (match) {
     return match[1].trim();

@@ -5,8 +5,8 @@ class AdvancedSelfConsistency {
 
   constructor(
     private model: LanguageModel,
-    private numSamples: number = 5,
-    private similarityThreshold: number = 0.8,
+    private numSamples = 5,
+    private similarityThreshold = 0.8,
   ) {}
 
   private async generateResponses(
