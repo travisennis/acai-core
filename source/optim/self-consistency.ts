@@ -128,7 +128,7 @@ class AdvancedSelfConsistency {
   }
 }
 
-export async function advancedSelfConsistencyApproach({
+export async function selfConsistency({
   model,
   system,
   prompt,

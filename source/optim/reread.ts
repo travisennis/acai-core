@@ -1,6 +1,6 @@
 import { type LanguageModel, generateText } from "ai";
 
-export const re2Approach = async ({
+export const reread = async ({
   model,
   system,
   prompt,

@@ -1,6 +1,6 @@
 import { type LanguageModel, generateText } from "ai";
 
-export async function mixtureOfAgents({
+export async function moa({
   model,
   system,
   prompt,
