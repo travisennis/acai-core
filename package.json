@@ -4,14 +4,28 @@
   "description": "A library of useful helpers for Vercel's ai.sdk.",
   "type": "module",
   "exports": {
-    "types": "./dist/index.d.ts",
-    "default": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "default": "./dist/mcp/index.js"
+    },
+    "./middleware": {
+      "types": "./dist/middleware/index.d.ts",
+      "default": "./dist/middleware/index.js"
+    },
+    "./optim": {
+      "types": "./dist/optim/index.d.ts",
+      "default": "./dist/optim/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.js"
+    }
   },
-  "keywords": [
-    "cli",
-    "ai",
-    "llm"
-  ],
+  "keywords": ["cli", "ai", "llm"],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
