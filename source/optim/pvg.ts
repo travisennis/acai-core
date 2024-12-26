@@ -1,59 +1,63 @@
 import { type LanguageModel, generateText } from "ai";
 
-let pvgCompletionTokens = 0;
+export class PVG {
+  private model: LanguageModel;
+  private systemPrompt: string;
+  completionTokens = 0;
 
-async function generateSolutions(
-  model: LanguageModel,
-  systemPrompt: string,
-  query: string,
-  numSolutions: number,
-  isSneaky = false,
-  temperature = 0.7,
-): Promise<string[]> {
-  const role = isSneaky ? "sneaky" : "helpful";
-  console.log(`Generating ${numSolutions} ${role} solutions`);
-
-  const roleInstruction = `
-    You are a problem solver tasked with generating solutions to the given problem. 
-    If you are in 'helpful' mode:
-    - Provide a correct, detailed, and step-by-step solution to the problem.
-    - Explain your reasoning clearly and logically.
-    - Ensure your final answer or conclusion is accurate and well-supported.
-    - Use domain-specific terminology or notation if appropriate.
-
-    If you are in 'sneaky' mode:
-    - Provide a solution that appears correct but contains subtle errors or flaws.
-    - Make your explanation seem logical and convincing.
-    - Ensure your final answer or conclusion is incorrect, but in a way that's not immediately obvious.
-    - Maintain the appearance of expertise in the relevant domain.
-    `;
-
-  const solutions: string[] = [];
-  for (let i = 0; i < numSolutions; i++) {
-    const { text, usage } = await generateText({
-      model,
-      maxTokens: 4096,
-      temperature,
-      system: `${systemPrompt}\n${roleInstruction}\nYou are in ${role} mode.`,
-      prompt: query,
-    });
-    pvgCompletionTokens += usage.completionTokens;
-    solutions.push(text);
+  constructor(model: LanguageModel, systemPrompt: string) {
+    this.model = model;
+    this.systemPrompt = systemPrompt;
   }
 
-  console.debug(`Generated ${role} solutions: ${solutions}`);
-  return solutions;
-}
+  async generateSolutions(
+    query: string,
+    numSolutions: number,
+    isSneaky = false,
+    temperature = 0.7,
+  ): Promise<string[]> {
+    const role = isSneaky ? "sneaky" : "helpful";
+    console.log(`Generating ${numSolutions} ${role} solutions`);
 
-async function verifySolutions(
-  model: LanguageModel,
-  systemPrompt: string,
-  initialQuery: string,
-  solutions: string[],
-): Promise<number[]> {
-  console.log(`Verifying ${solutions.length} solutions`);
+    const roleInstruction = `
+      You are a problem solver tasked with generating solutions to the given problem. 
+      If you are in 'helpful' mode:
+      - Provide a correct, detailed, and step-by-step solution to the problem.
+      - Explain your reasoning clearly and logically.
+      - Ensure your final answer or conclusion is accurate and well-supported.
+      - Use domain-specific terminology or notation if appropriate.
 
-  const verifyPrompt = `${systemPrompt}
+      If you are in 'sneaky' mode:
+      - Provide a solution that appears correct but contains subtle errors or flaws.
+      - Make your explanation seem logical and convincing.
+      - Ensure your final answer or conclusion is incorrect, but in a way that's not immediately obvious.
+      - Maintain the appearance of expertise in the relevant domain.
+      `;
+
+    const solutions: string[] = [];
+    for (let i = 0; i < numSolutions; i++) {
+      const { text, usage } = await generateText({
+        model: this.model,
+        maxTokens: 4096,
+        temperature,
+        system: `${this.systemPrompt}\n${roleInstruction}\nYou are in ${role} mode.`,
+        prompt: query,
+      });
+      this.completionTokens += usage.completionTokens;
+      solutions.push(text);
+    }
+
+    console.debug(`Generated ${role} solutions: ${solutions}`);
+    return solutions;
+  }
+
+  async verifySolutions(
+    initialQuery: string,
+    solutions: string[],
+  ): Promise<number[]> {
+    console.log(`Verifying ${solutions.length} solutions`);
+
+    const verifyPrompt = `${this.systemPrompt}
 You are a verifier tasked with evaluating the correctness and clarity of solutions to the given problem.
 Rate the following solution on a scale from 0 to 10, where:
 - 0 is completely incorrect or incomprehensible
@@ -76,47 +80,54 @@ Explanation: [Your detailed explanation for the score, highlighting specific str
 
 Ensure that the Score is a single number between 0 and 10, and the Explanation is on a new line.`;
 
-  const scores: number[] = [];
+    const scores: number[] = [];
 
-  for (let i = 0; i < solutions.length; i++) {
-    const { text, usage } = await generateText({
-      model,
-      maxTokens: 1024,
-      temperature: 0.2,
-      system: verifyPrompt,
-      prompt: `Problem: ${initialQuery}\n\nSolution: ${solutions[i]}`,
-    });
+    for (let i = 0; i < solutions.length; i++) {
+      const { text, usage } = await generateText({
+        model: this.model,
+        maxTokens: 1024,
+        temperature: 0.2,
+        system: verifyPrompt,
+        prompt: `Problem: ${initialQuery}\n\nSolution: ${solutions[i]}`,
+      });
 
-    pvgCompletionTokens += usage.completionTokens;
-    console.debug(`Raw rating for solution ${i + 1}: ${text}`);
+      this.completionTokens += usage.completionTokens;
+      console.debug(`Raw rating for solution ${i + 1}: ${text}`);
 
-    const scoreMatch = text.match(/Score:\s*(\d+(\.\d+)?)/);
-    const explanationMatch = text.match(/Explanation:\s*(.*)/s);
+      const scoreMatch = text.match(/Score:\s*(\d+(\.\d+)?)/);
+      const explanationMatch = text.match(/Explanation:\s*(.*)/s);
 
-    if (scoreMatch) {
-      try {
-        const score = Number.parseFloat(scoreMatch[1]);
-        scores.push(score);
-        console.debug(`Solution ${i + 1} score: ${score}`);
-        if (explanationMatch) {
-          const explanation = explanationMatch[1].trim();
-          console.debug(`Explanation: ${explanation}`);
-        } else {
-          console.warn(`No explanation found for solution ${i + 1}`);
+      if (scoreMatch) {
+        try {
+          const score = Number.parseFloat(scoreMatch[1]);
+          scores.push(score);
+          console.debug(`Solution ${i + 1} score: ${score}`);
+          if (explanationMatch) {
+            const explanation = explanationMatch[1].trim();
+            console.debug(`Explanation: ${explanation}`);
+          } else {
+            console.warn(`No explanation found for solution ${i + 1}`);
+          }
+        } catch (error) {
+          scores.push(0);
+          console.warn(
+            `Failed to parse score for solution ${i + 1}. Setting score to 0.`,
+          );
         }
-      } catch (error) {
+      } else {
         scores.push(0);
         console.warn(
-          `Failed to parse score for solution ${i + 1}. Setting score to 0.`,
+          `No score found for solution ${i + 1}. Setting score to 0.`,
         );
       }
-    } else {
-      scores.push(0);
-      console.warn(`No score found for solution ${i + 1}. Setting score to 0.`);
     }
+
+    return scores;
   }
 
-  return scores;
+  get tokens(): number {
+    return this.completionTokens;
+  }
 }
 
 export async function pvg({
@@ -136,6 +147,7 @@ export async function pvg({
     `Starting inference-time PV game with ${numRounds} rounds and ${numSolutions} solutions per round`,
   );
 
+  const pvg = new PVG(model, systemPrompt);
   let bestSolution = "";
   let bestScore = -1;
 
@@ -144,17 +156,13 @@ export async function pvg({
 
     const temperature = Math.max(0.2, 0.7 - round * 0.1);
 
-    const helpfulSolutions = await generateSolutions(
-      model,
-      systemPrompt,
+    const helpfulSolutions = await pvg.generateSolutions(
       initialQuery,
       numSolutions,
       false,
       temperature,
     );
-    const sneakySolutions = await generateSolutions(
-      model,
-      systemPrompt,
+    const sneakySolutions = await pvg.generateSolutions(
       initialQuery,
       numSolutions,
       true,
@@ -162,12 +170,7 @@ export async function pvg({
     );
     const allSolutions = [...helpfulSolutions, ...sneakySolutions];
 
-    const scores = await verifySolutions(
-      model,
-      systemPrompt,
-      initialQuery,
-      allSolutions,
-    );
+    const scores = await pvg.verifySolutions(initialQuery, allSolutions);
 
     const roundBestIndex = scores.indexOf(Math.max(...scores));
     const roundBestScore = scores[roundBestIndex];
@@ -207,7 +210,7 @@ export async function pvg({
         prompt: refinePrompt,
       });
 
-      pvgCompletionTokens += usage.completionTokens;
+      pvg.completionTokens += usage.completionTokens;
       initialQuery = text;
       console.debug(`Refined query: ${initialQuery}`);
     }
@@ -217,5 +220,5 @@ export async function pvg({
     `Inference-time PV game completed. Best solution score: ${bestScore}`,
   );
 
-  return [bestSolution, pvgCompletionTokens];
+  return [bestSolution, pvg.tokens];
 }
