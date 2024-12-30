@@ -25,7 +25,11 @@
       "default": "./dist/tools/index.js"
     }
   },
-  "keywords": ["cli", "ai", "llm"],
+  "keywords": [
+    "cli",
+    "ai",
+    "llm"
+  ],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
@@ -53,6 +57,7 @@
     "diff": "^7.0.0",
     "ignore": "^7.0.0",
     "minimatch": "^10.0.1",
+    "serpapi": "^2.1.0",
     "simple-git": "^3.27.0",
     "zod": "^3.24.1"
   },
