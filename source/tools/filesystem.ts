@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import os from "node:os";
-import { z } from "zod";
-import { createTwoFilesPatch } from "diff";
-import { minimatch } from "minimatch";
+import path from "node:path";
 import { tool } from "ai";
-import ignore from "ignore";
+import { createTwoFilesPatch } from "diff";
+import ignore, { type Ignore } from "ignore";
+import { minimatch } from "minimatch";
+import { z } from "zod";
 
 // Normalize all paths consistently
 function normalizePath(p: string): string {
@@ -152,7 +152,7 @@ function normalizeLineEndings(text: string): string {
 function createUnifiedDiff(
   originalContent: string,
   newContent: string,
-  filepath: string = "file",
+  filepath = "file",
 ): string {
   // Ensure consistent line endings for diff
   const normalizedOriginal = normalizeLineEndings(originalContent);
@@ -177,7 +177,7 @@ const INDENT_REGEX = /^\s*/;
 async function applyFileEdits(
   filePath: string,
   edits: FileEdit[],
-  dryRun: boolean = false,
+  dryRun = false,
 ): Promise<string> {
   // Read file content and normalize line endings
   const content = normalizeLineEndings(await fs.readFile(filePath, "utf-8"));
@@ -277,17 +277,19 @@ function getIndent(level: number, isLast: boolean): string {
  */
 async function generateDirectoryTree(
   dirPath: string,
-  level: number = 1,
+  ig: Ignore,
+  level = 1,
 ): Promise<string> {
-  const name = path.basename(dirPath);
-  const ignoreFile = await fs.readFile(path.join(name, ".gitignore"));
-  const ig = ignore().add(ignoreFile.toString()).add(".git");
-
-  let output = `${getIndent(level, false)}${name}\n`;
-
   try {
+    const name = path.basename(dirPath);
+    let output = `${getIndent(level, false)}${name}\n`;
+
     const items = await fs.readdir(dirPath);
     const filteredItems = ig.filter(items);
+    if (level === 1) {
+      console.dir(items);
+      console.dir(filteredItems);
+    }
 
     for (let i = 0; i < filteredItems.length; i++) {
       const item = filteredItems[i];
@@ -296,16 +298,16 @@ async function generateDirectoryTree(
       const stats = await fs.stat(itemPath);
 
       if (stats.isDirectory()) {
-        output += await generateDirectoryTree(itemPath, level + 1);
+        output += await generateDirectoryTree(itemPath, ig, level + 1);
       } else {
         output += `${getIndent(level + 1, isLast)}${item}\n`;
       }
     }
+    return output;
   } catch (error) {
-    console.log(`Error reading directory: ${dirPath}`, error);
+    console.error(`Error reading directory: ${dirPath}`, error);
+    return `Error reading directory: ${dirPath}: ${(error as Error).message}`;
   }
-
-  return output;
 }
 
 /**
@@ -314,7 +316,16 @@ async function generateDirectoryTree(
  * @returns A Promise that resolves to a string representation of the directory tree.
  */
 export async function directoryTree(dirPath: string): Promise<string> {
-  return (await generateDirectoryTree(dirPath)).trim();
+  let ig: Ignore;
+  try {
+    const ignoreFile = await fs.readFile(path.join(dirPath, ".gitignore"));
+    ig = ignore().add(ignoreFile.toString()).add(".git");
+  } catch (_error) {
+    console.error(_error);
+    // If .gitignore doesn't exist, create basic ignore with just .git
+    ig = ignore().add(".git");
+  }
+  return (await generateDirectoryTree(dirPath, ig)).trim();
 }
 
 interface FileSystemOptions {
@@ -558,7 +569,7 @@ export const createFileSystemTools = async ({
         "prefixes. This tool is essential for understanding directory structure and " +
         "finding specific files within a directory. Only works within allowed directories.",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("Absolute path"),
       }),
       execute: async ({ path }) => {
         const validPath = await validatePath(path, allowedDirectories);
@@ -576,11 +587,11 @@ export const createFileSystemTools = async ({
       description:
         "Get a directory tree structure for a given path. This tool will ignore any directories or files listed in a .gitignore file.",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("Absolute path"),
       }),
       execute: async ({ path }) => {
         const validPath = await validatePath(path, allowedDirectories);
-        return generateDirectoryTree(validPath);
+        return directoryTree(validPath);
       },
     }),
   };
