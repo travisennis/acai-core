@@ -2,13 +2,12 @@ import { type LanguageModel, generateObject, generateText } from "ai";
 import { z } from "zod";
 
 class ThoughtNode {
-  public children: ThoughtNode[] = [];
-  public score: number;
+  children: ThoughtNode[] = [];
+  content: string;
+  score: number;
 
-  constructor(
-    public content: string,
-    score: number = 0,
-  ) {
+  constructor(content: string, score = 0) {
+    this.content = content;
     this.score = score;
   }
 
@@ -27,19 +26,19 @@ class TreeOfThought {
   constructor({
     model,
     system,
-    initialThought,
+    prompt,
     maxDepth = 3,
     branchingFactor = 3,
   }: {
     model: LanguageModel;
     system?: string;
-    initialThought: string;
+    prompt: string;
     maxDepth?: number;
     branchingFactor?: number;
   }) {
     this.model = model;
     this.system = system;
-    this.root = new ThoughtNode(initialThought);
+    this.root = new ThoughtNode(prompt);
     this.maxDepth = maxDepth;
     this.branchingFactor = branchingFactor;
   }
@@ -48,7 +47,7 @@ class TreeOfThought {
     const { text } = await generateText({
       model: this.model,
       temperature: 0.7,
-      maxTokens: 200,
+      maxTokens: 4096,
       system: this.system,
       prompt: `Next thought based on: ${parentThought}`,
     });
@@ -108,6 +107,6 @@ export function tot({
   system?: string;
   prompt: string;
 }): Promise<string> {
-  const instance = new TreeOfThought({ model, system, initialThought: prompt });
+  const instance = new TreeOfThought({ model, system, prompt });
   return instance.findBestSolution();
 }

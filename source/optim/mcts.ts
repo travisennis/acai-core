@@ -436,14 +436,14 @@ class MCTS {
 export async function mcts({
   model,
   system = "",
-  initialQuery,
+  prompt,
   numSimulations = 10,
   simulationDepth = 5,
   options = {},
 }: {
   model: LanguageModel;
   system?: string;
-  initialQuery: string;
+  prompt: string;
   numSimulations?: number;
   simulationDepth?: number;
   options?: {
@@ -469,7 +469,7 @@ export async function mcts({
     mctsOptions,
   );
 
-  const initialState = DialogueState.create(system, [], initialQuery);
+  const initialState = DialogueState.create(system, [], prompt);
 
   try {
     const response = await mctsInstance.findBestResponse(initialState);

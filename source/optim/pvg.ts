@@ -5,9 +5,9 @@ export class PVG {
   private systemPrompt: string;
   completionTokens = 0;
 
-  constructor(model: LanguageModel, systemPrompt: string) {
+  constructor(model: LanguageModel, systemPrompt?: string) {
     this.model = model;
-    this.systemPrompt = systemPrompt;
+    this.systemPrompt = systemPrompt ?? "";
   }
 
   async generateSolutions(
@@ -133,13 +133,13 @@ Ensure that the Score is a single number between 0 and 10, and the Explanation i
 export async function pvg({
   model,
   systemPrompt,
-  initialQuery,
+  prompt,
   numRounds = 2,
   numSolutions = 3,
 }: {
   model: LanguageModel;
-  systemPrompt: string;
-  initialQuery: string;
+  systemPrompt?: string;
+  prompt: string;
   numRounds?: number;
   numSolutions?: number;
 }): Promise<[string, number]> {
@@ -150,27 +150,27 @@ export async function pvg({
   const pvg = new PVG(model, systemPrompt);
   let bestSolution = "";
   let bestScore = -1;
-
+  let currentPrompt = prompt;
   for (let round = 0; round < numRounds; round++) {
     console.log(`Starting round ${round + 1}`);
 
     const temperature = Math.max(0.2, 0.7 - round * 0.1);
 
     const helpfulSolutions = await pvg.generateSolutions(
-      initialQuery,
+      currentPrompt,
       numSolutions,
       false,
       temperature,
     );
     const sneakySolutions = await pvg.generateSolutions(
-      initialQuery,
+      currentPrompt,
       numSolutions,
       true,
       temperature,
     );
     const allSolutions = [...helpfulSolutions, ...sneakySolutions];
 
-    const scores = await pvg.verifySolutions(initialQuery, allSolutions);
+    const scores = await pvg.verifySolutions(currentPrompt, allSolutions);
 
     const roundBestIndex = scores.indexOf(Math.max(...scores));
     const roundBestScore = scores[roundBestIndex];
@@ -195,7 +195,7 @@ export async function pvg({
         Focus on aspects of the problem that were challenging or not fully addressed in the best solution.
         Maintain the core intent of the original query while adding specificity or context that could improve the solution.
         
-        Original query: ${initialQuery}
+        Original query: ${currentPrompt}
         
         Best solution so far: ${bestSolution}
         
@@ -211,8 +211,8 @@ export async function pvg({
       });
 
       pvg.completionTokens += usage.completionTokens;
-      initialQuery = text;
-      console.debug(`Refined query: ${initialQuery}`);
+      currentPrompt = text;
+      console.debug(`Refined query: ${currentPrompt}`);
     }
   }
 

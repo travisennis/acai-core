@@ -6,7 +6,7 @@ import {
 } from "ai";
 
 class ECHOImplementation {
-  tokens: number = 0;
+  tokens = 0;
 
   constructor(
     private model: LanguageModel,
