@@ -25,11 +25,7 @@
       "default": "./dist/tools/index.js"
     }
   },
-  "keywords": [
-    "cli",
-    "ai",
-    "llm"
-  ],
+  "keywords": ["cli", "ai", "llm"],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
