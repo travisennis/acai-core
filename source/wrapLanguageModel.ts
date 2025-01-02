@@ -1,6 +1,6 @@
 import {
-  LanguageModel,
-  Experimental_LanguageModelV1Middleware as LanguageModelV1Middleware,
+  type LanguageModel,
+  type Experimental_LanguageModelV1Middleware as LanguageModelV1Middleware,
   experimental_wrapLanguageModel as orginalWrapLanguageModel,
 } from "ai";
 
