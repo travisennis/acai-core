@@ -1,25 +1,25 @@
-import {
+import type {
   Experimental_LanguageModelV1Middleware as LanguageModelV1Middleware,
   LanguageModelV1StreamPart,
 } from "ai";
 
 export const log: LanguageModelV1Middleware = {
   wrapGenerate: async ({ doGenerate, params }) => {
-    console.log("log middleware");
-    console.log("doGenerate called");
-    console.log(`params: ${JSON.stringify(params, null, 2)}`);
+    console.info("log middleware");
+    console.info("doGenerate called");
+    console.info(`params: ${JSON.stringify(params, null, 2)}`);
 
     const result = await doGenerate();
 
-    console.log("doGenerate finished");
-    console.log(`generated text: ${result.text}`);
+    console.info("doGenerate finished");
+    console.info(`generated text: ${result.text}`);
 
     return result;
   },
 
   wrapStream: async ({ doStream, params }) => {
-    console.log("doStream called");
-    console.log(`params: ${JSON.stringify(params, null, 2)}`);
+    console.info("doStream called");
+    console.info(`params: ${JSON.stringify(params, null, 2)}`);
 
     const { stream, ...rest } = await doStream();
 
@@ -38,8 +38,8 @@ export const log: LanguageModelV1Middleware = {
       },
 
       flush() {
-        console.log("doStream finished");
-        console.log(`generated text: ${generatedText}`);
+        console.info("doStream finished");
+        console.info(`generated text: ${generatedText}`);
       },
     });
 
