@@ -25,7 +25,8 @@
       "default": "./dist/tools/index.js"
     }
   },
-  "keywords": ["cli", "ai", "llm"],
+  "packageManager": "npm",
+  "keywords": ["ai", "llm"],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
@@ -63,5 +64,8 @@
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
