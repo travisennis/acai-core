@@ -8,7 +8,7 @@ class PlanSearch {
   constructor(
     model: LanguageModel,
     systemPrompt?: string,
-    programmingLanguage: string = "typescript",
+    programmingLanguage = "typescript",
   ) {
     this.systemPrompt = systemPrompt;
     this.model = model;
@@ -17,7 +17,7 @@ class PlanSearch {
 
   async generateObservations(
     problem: string,
-    numObservations: number = 3,
+    numObservations = 3,
   ): Promise<string[]> {
     const prompt = `You are an expert ${this.language} programmer. You will be given a competitive programming question
 (problem specification). You will return several useful, non-obvious, and correct observations
@@ -43,7 +43,7 @@ Please provide ${numObservations} observations.`;
   async generateDerivedObservations(
     problem: string,
     observations: string[],
-    numNewObservations: number = 2,
+    numNewObservations = 2,
   ): Promise<string[]> {
     const prompt = `You are an expert ${this.language} programmer. You will be given a competitive programming question
 (problem specification) and several correct observations about the problem.
@@ -122,8 +122,8 @@ Please implement the solution in ${this.language}.`;
 
   async solve(
     problem: string,
-    numInitialObservations: number = 3,
-    numDerivedObservations: number = 2,
+    numInitialObservations = 3,
+    numDerivedObservations = 2,
   ): Promise<[string, string]> {
     const initialObservations = await this.generateObservations(
       problem,
@@ -149,8 +149,8 @@ Please implement the solution in ${this.language}.`;
   async solveMultiple(
     problem: string,
     n: number,
-    numInitialObservations: number = 3,
-    numDerivedObservations: number = 2,
+    numInitialObservations = 3,
+    numDerivedObservations = 2,
   ): Promise<string[]> {
     const solutions: string[] = [];
     for (let i = 0; i < n; i++) {
