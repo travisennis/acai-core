@@ -346,6 +346,16 @@ const fileEncodingSchema = z.enum([
   "hex",
 ]);
 
+export const READ_ONLY = [
+  "currentDirectory",
+  "readFile",
+  "readMultipleFiles",
+  "searchFiles",
+  "getFileInfo",
+  "listDirectory",
+  "directoryTree",
+] as const;
+
 export const createFileSystemTools = async ({
   workingDir,
 }: FileSystemOptions) => {
