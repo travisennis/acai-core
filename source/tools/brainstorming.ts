@@ -12,10 +12,13 @@ import { brainstorm } from "../brainstorm/index.ts";
 export const createBrainstormingTools = (model: LanguageModel) => {
   return {
     listBrainStormingStrategies: tool({
-      description: "Returns a comma-separated list of the supported brainstorming strategies",
+      description:
+        "Returns a comma-separated list of the supported brainstorming strategies",
       parameters: z.object({}),
-      execute: async () => {
-        return "bigMindMapping, reverseBrainstorming, roleStorming, scamper, sixHats, starbursting";
+      execute: () => {
+        return Promise.resolve(
+          "bigMindMapping, reverseBrainstorming, roleStorming, scamper, sixHats, starbursting",
+        );
       },
     }),
 
