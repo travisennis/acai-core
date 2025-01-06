@@ -11,6 +11,14 @@ import { brainstorm } from "../brainstorm/index.ts";
 
 export const createBrainstormingTools = (model: LanguageModel) => {
   return {
+    listBrainStormingStrategies: tool({
+      description: "Returns a comma-separated list of the supported brainstorming strategies",
+      parameters: z.object({}),
+      execute: async () => {
+        return "bigMindMapping, reverseBrainstorming, roleStorming, scamper, sixHats, starbursting";
+      },
+    }),
+
     bigMindMapping: tool({
       description:
         "Generate ideas using the Big Mind Mapping technique, which expands one idea into multiple related ideas and then further expands those ideas",
