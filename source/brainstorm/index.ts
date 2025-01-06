@@ -5,8 +5,6 @@ import {
   type TreeNode,
   TreeNodeImpl,
 } from "./utils.ts";
-import { languageModel } from "../providers.ts";
-import { bigMindMapping } from "./bigMindMapping.ts";
 
 // Main function
 export async function brainstorm({
@@ -42,17 +40,3 @@ export async function brainstorm({
 
 // for more:
 // https://www.lucidchart.com/blog/effective-brainstorming-techniques
-
-async function main() {
-  const result = await brainstorm({
-    model: languageModel("openai:gpt-4o-mini"),
-    query:
-      "As I research topics on the internet, I bookmark pages that I find interesting or useful and that I want to come back to. Devise a system that helps me process those bookmarks for knowledge and actionable ideas",
-    strategy: bigMindMapping,
-    n: 5,
-  });
-
-  console.info(result);
-}
-
-main();
