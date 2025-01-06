@@ -72,13 +72,18 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           .describe(
             "The topic to brainstorm from different personas' perspectives",
           ),
+        n: z
+          .number()
+          .optional()
+          .describe("Number of initial ideas to generate (default: 5)"),
       }),
-      execute: async ({ idea }) => {
+      execute: async ({ idea, n }) => {
         try {
           const result = await brainstorm({
             model,
             query: idea,
             strategy: roleStorming,
+            n,
           });
           return result;
         } catch (error) {
@@ -94,13 +99,18 @@ export const createBrainstormingTools = (model: LanguageModel) => {
         idea: z
           .string()
           .describe("The topic to analyze using the SCAMPER framework"),
+        n: z
+          .number()
+          .optional()
+          .describe("Number of initial ideas to generate (default: 5)"),
       }),
-      execute: async ({ idea }) => {
+      execute: async ({ idea, n }) => {
         try {
           const result = await brainstorm({
             model,
             query: idea,
             strategy: scamper,
+            n,
           });
           return result;
         } catch (error) {
@@ -116,13 +126,18 @@ export const createBrainstormingTools = (model: LanguageModel) => {
         idea: z
           .string()
           .describe("The topic to analyze using the Six Thinking Hats method"),
+        n: z
+          .number()
+          .optional()
+          .describe("Number of initial ideas to generate (default: 5)"),
       }),
-      execute: async ({ idea }) => {
+      execute: async ({ idea, n }) => {
         try {
           const result = await brainstorm({
             model,
             query: idea,
             strategy: sixHats,
+            n,
           });
           return result;
         } catch (error) {
@@ -138,13 +153,18 @@ export const createBrainstormingTools = (model: LanguageModel) => {
         idea: z
           .string()
           .describe("The topic to explore using the Starbursting method"),
+        n: z
+          .number()
+          .optional()
+          .describe("Number of initial ideas to generate (default: 5)"),
       }),
-      execute: async ({ idea }) => {
+      execute: async ({ idea, n }) => {
         try {
           const result = await brainstorm({
             model,
             query: idea,
             strategy: starbursting,
+            n,
           });
           return result;
         } catch (error) {
