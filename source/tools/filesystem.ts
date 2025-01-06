@@ -400,9 +400,13 @@ export const createFileSystemTools = async ({
         path: z.string().describe("Absolute path to directory to create"),
       }),
       execute: async ({ path }) => {
-        const validPath = await validatePath(path, allowedDirectories);
-        await fs.mkdir(validPath, { recursive: true });
-        return `Successfully created directory ${path}`;
+        try {
+          const validPath = await validatePath(path, allowedDirectories);
+          await fs.mkdir(validPath, { recursive: true });
+          return `Successfully created directory ${path}`;
+        } catch (error) {
+          return `Failed to create directory: ${(error as Error).message}`;
+        }
       },
     }),
 
@@ -420,15 +424,22 @@ export const createFileSystemTools = async ({
         ),
       }),
       execute: async ({ path: userPath, is_image, encoding }) => {
-        const filePath = await validatePath(userPath, allowedDirectories);
-        const file = await fs.readFile(filePath, { encoding });
-        if (is_image) {
-          return `data:image/${path
-            .extname(filePath)
-            .toLowerCase()
-            .replace(".", "")};base64,${Buffer.from(file).toString("base64")}`;
+        try {
+          const filePath = await validatePath(userPath, allowedDirectories);
+          const file = await fs.readFile(filePath, { encoding });
+          if (is_image) {
+            return `data:image/${path
+              .extname(filePath)
+              .toLowerCase()
+              .replace(
+                ".",
+                "",
+              )};base64,${Buffer.from(file).toString("base64")}`;
+          }
+          return file;
+        } catch (error) {
+          return `Failed to read file: ${(error as Error).message}`;
         }
-        return file;
       },
     }),
 
@@ -484,9 +495,13 @@ export const createFileSystemTools = async ({
           .describe("Preview changes using git-style diff format"),
       }),
       execute: async ({ path, edits, dryRun }) => {
-        const validPath = await validatePath(path, allowedDirectories);
-        const result = await applyFileEdits(validPath, edits, dryRun);
-        return result;
+        try {
+          const validPath = await validatePath(path, allowedDirectories);
+          const result = await applyFileEdits(validPath, edits, dryRun);
+          return result;
+        } catch (error) {
+          return `Failed to edit file: ${(error as Error).message}`;
+        }
       },
     }),
 
@@ -503,14 +518,18 @@ export const createFileSystemTools = async ({
         excludePatterns: z.array(z.string()).optional().default([]),
       }),
       execute: async ({ path, pattern, excludePatterns }) => {
-        const validPath = await validatePath(path, allowedDirectories);
-        const results = await searchFiles(
-          validPath,
-          pattern,
-          excludePatterns,
-          allowedDirectories,
-        );
-        return results.length > 0 ? results.join("\n") : "No matches found";
+        try {
+          const validPath = await validatePath(path, allowedDirectories);
+          const results = await searchFiles(
+            validPath,
+            pattern,
+            excludePatterns,
+            allowedDirectories,
+          );
+          return results.length > 0 ? results.join("\n") : "No matches found";
+        } catch (error) {
+          return `Failed to search files: ${(error as Error).message}`;
+        }
       },
     }),
 
@@ -524,11 +543,15 @@ export const createFileSystemTools = async ({
         path: z.string(),
       }),
       execute: async ({ path }) => {
-        const validPath = await validatePath(path, allowedDirectories);
-        const info = await getFileStats(validPath);
-        return Object.entries(info)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join("\n");
+        try {
+          const validPath = await validatePath(path, allowedDirectories);
+          const info = await getFileStats(validPath);
+          return Object.entries(info)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join("\n");
+        } catch (error) {
+          return `Failed to get file info: ${(error as Error).message}`;
+        }
       },
     }),
 
@@ -545,9 +568,13 @@ export const createFileSystemTools = async ({
         ),
       }),
       execute: async ({ path: userPath, content, encoding }) => {
-        const filePath = await validatePath(userPath, allowedDirectories);
-        await fs.writeFile(filePath, content, { encoding });
-        return `File saved successfully: ${filePath}`;
+        try {
+          const filePath = await validatePath(userPath, allowedDirectories);
+          await fs.writeFile(filePath, content, { encoding });
+          return `File saved successfully: ${filePath}`;
+        } catch (error) {
+          return `Failed to save file: ${(error as Error).message}`;
+        }
       },
     }),
 
@@ -562,13 +589,20 @@ export const createFileSystemTools = async ({
         destination: z.string(),
       }),
       execute: async ({ source, destination }) => {
-        const validSourcePath = await validatePath(source, allowedDirectories);
-        const validDestPath = await validatePath(
-          destination,
-          allowedDirectories,
-        );
-        await fs.rename(validSourcePath, validDestPath);
-        return `Successfully moved ${source} to ${destination}`;
+        try {
+          const validSourcePath = await validatePath(
+            source,
+            allowedDirectories,
+          );
+          const validDestPath = await validatePath(
+            destination,
+            allowedDirectories,
+          );
+          await fs.rename(validSourcePath, validDestPath);
+          return `Successfully moved ${source} to ${destination}`;
+        } catch (error) {
+          return `Failed to move file: ${(error as Error).message}`;
+        }
       },
     }),
 
@@ -582,14 +616,18 @@ export const createFileSystemTools = async ({
         path: z.string().describe("Absolute path"),
       }),
       execute: async ({ path }) => {
-        const validPath = await validatePath(path, allowedDirectories);
-        const entries = await fs.readdir(validPath, { withFileTypes: true });
-        return entries
-          .map(
-            (entry) =>
-              `${entry.isDirectory() ? "[DIR]" : "[FILE]"} ${entry.name}`,
-          )
-          .join("\n");
+        try {
+          const validPath = await validatePath(path, allowedDirectories);
+          const entries = await fs.readdir(validPath, { withFileTypes: true });
+          return entries
+            .map(
+              (entry) =>
+                `${entry.isDirectory() ? "[DIR]" : "[FILE]"} ${entry.name}`,
+            )
+            .join("\n");
+        } catch (error) {
+          return `Failed to list directory: ${(error as Error).message}`;
+        }
       },
     }),
 
@@ -600,8 +638,12 @@ export const createFileSystemTools = async ({
         path: z.string().describe("Absolute path"),
       }),
       execute: async ({ path }) => {
-        const validPath = await validatePath(path, allowedDirectories);
-        return directoryTree(validPath);
+        try {
+          const validPath = await validatePath(path, allowedDirectories);
+          return directoryTree(validPath);
+        } catch (error) {
+          return `Failed to show directory tree: ${(error as Error).message}`;
+        }
       },
     }),
   };
