@@ -7,7 +7,7 @@ import { roleStorming } from "../brainstorm/roleStorming.ts";
 import { scamper } from "../brainstorm/scamper.ts";
 import { sixHats } from "../brainstorm/sixHats.ts";
 import { starbursting } from "../brainstorm/starBursting.ts";
-import type { TreeNode } from "../brainstorm/utils.ts";
+import { brainstorm } from "../brainstorm/index.ts";
 
 export const createBrainstormingTools = (model: LanguageModel) => {
   return {
@@ -23,8 +23,13 @@ export const createBrainstormingTools = (model: LanguageModel) => {
       }),
       execute: async ({ idea, n }) => {
         try {
-          const result: TreeNode = await bigMindMapping({ model, idea, n });
-          return JSON.stringify(result, null, 2);
+          const result = await brainstorm({
+            model,
+            query: idea,
+            strategy: bigMindMapping,
+            n,
+          });
+          return result;
         } catch (error) {
           return `Error in big mind mapping: ${(error as Error).message}`;
         }
@@ -33,7 +38,7 @@ export const createBrainstormingTools = (model: LanguageModel) => {
 
     reverseBrainstorming: tool({
       description:
-        "Generate ideas using Reverse Brainstorming, which identifies potential problems or challenges an idea may encounter",
+        "Generate ideas using Reverse Brainstorming, which identifies potential problems and challenges an idea may encounter",
       parameters: z.object({
         idea: z
           .string()
@@ -45,12 +50,13 @@ export const createBrainstormingTools = (model: LanguageModel) => {
       }),
       execute: async ({ idea, n }) => {
         try {
-          const result: TreeNode = await reverseBrainstorming({
+          const result = await brainstorm({
             model,
-            idea,
+            query: idea,
+            strategy: reverseBrainstorming,
             n,
           });
-          return JSON.stringify(result, null, 2);
+          return result;
         } catch (error) {
           return `Error in reverse brainstorming: ${(error as Error).message}`;
         }
@@ -69,8 +75,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
       }),
       execute: async ({ idea }) => {
         try {
-          const result: TreeNode = await roleStorming({ model, idea });
-          return JSON.stringify(result, null, 2);
+          const result = await brainstorm({
+            model,
+            query: idea,
+            strategy: roleStorming,
+          });
+          return result;
         } catch (error) {
           return `Error in role storming: ${(error as Error).message}`;
         }
@@ -87,8 +97,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
       }),
       execute: async ({ idea }) => {
         try {
-          const result: TreeNode = await scamper({ model, idea });
-          return JSON.stringify(result, null, 2);
+          const result = await brainstorm({
+            model,
+            query: idea,
+            strategy: scamper,
+          });
+          return result;
         } catch (error) {
           return `Error in SCAMPER analysis: ${(error as Error).message}`;
         }
@@ -105,8 +119,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
       }),
       execute: async ({ idea }) => {
         try {
-          const result: TreeNode = await sixHats({ model, idea });
-          return JSON.stringify(result, null, 2);
+          const result = await brainstorm({
+            model,
+            query: idea,
+            strategy: sixHats,
+          });
+          return result;
         } catch (error) {
           return `Error in Six Hats analysis: ${(error as Error).message}`;
         }
@@ -123,8 +141,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
       }),
       execute: async ({ idea }) => {
         try {
-          const result: TreeNode = await starbursting({ model, idea });
-          return JSON.stringify(result, null, 2);
+          const result = await brainstorm({
+            model,
+            query: idea,
+            strategy: starbursting,
+          });
+          return result;
         } catch (error) {
           return `Error in Starbursting analysis: ${(error as Error).message}`;
         }
