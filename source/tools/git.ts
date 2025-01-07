@@ -15,22 +15,38 @@ interface GitOptions {
   workingDir: string;
 }
 
-const sanitizePath = (workingDir: string, userPath: string): string => {
-  const resolvedPath = path.resolve(workingDir, userPath);
-
-  if (!resolvedPath.startsWith(workingDir)) {
-    throw new Error("Path is outside the working directory.");
+const validateGitRepo = (workingDir: string): void => {
+  try {
+    const stats = fs.statSync(workingDir);
+    if (!stats.isDirectory()) {
+      throw new Error(`Error: ${workingDir} is not a directory`);
+    }
+  } catch (error) {
+    throw new Error(`Error accessing directory ${workingDir}:`, {
+      cause: error,
+    });
   }
 
-  const gitDir = path.join(resolvedPath, ".git");
+  const gitDir = path.join(workingDir, ".git");
 
   try {
     const stats = fs.statSync(gitDir);
     if (!stats.isDirectory()) {
-      throw new Error("Not a git repository");
+      throw new Error(`Not a git repository: ${workingDir}`);
     }
-  } catch (_error) {
-    throw new Error("Not a git repository");
+  } catch (error) {
+    console.error(`Unknown error: ${(error as Error).message}`);
+    throw new Error(`Not a git repository: ${workingDir}`, { cause: error });
+  }
+};
+
+const sanitizePath = (workingDir: string, userPath: string): string => {
+  const resolvedPath = path.resolve(workingDir, userPath);
+
+  if (!resolvedPath.startsWith(workingDir)) {
+    throw new Error(
+      `Path is outside the working directory: ${resolvedPath} is not in ${workingDir}`,
+    );
   }
 
   return resolvedPath;
@@ -46,6 +62,7 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
       }),
       execute: async ({ path, name }) => {
         try {
+          validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
 
@@ -76,6 +93,7 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
       }),
       execute: async ({ path, message, files }) => {
         try {
+          validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
 
@@ -116,6 +134,7 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
       }),
       execute: async ({ path }) => {
         try {
+          validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
 
@@ -140,6 +159,7 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
       }),
       execute: async ({ path, target }) => {
         try {
+          validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff([target]);
@@ -158,6 +178,7 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
       }),
       execute: async ({ path }) => {
         try {
+          validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff();
@@ -175,6 +196,7 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
       }),
       execute: async ({ path }) => {
         try {
+          validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff(["--cached"]);
