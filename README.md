@@ -1,1 +1,1 @@
-# ai-sdk-ext
+# acai-core
