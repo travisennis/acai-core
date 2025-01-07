@@ -1,7 +1,7 @@
 {
-  "name": "@travisennis/ai-sdk-ext",
+  "name": "@travisennis/acai-core",
   "version": "0.0.0",
-  "description": "A library of useful helpers for Vercel's ai.sdk.",
+  "description": "The core SDK for acai. Used by acai-ts, acai-web, and acai-language-server.",
   "type": "module",
   "exports": {
     ".": {
@@ -46,11 +46,6 @@
     "check": "npx npm-check-updates  --interactive --format group"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.6",
-    "@ai-sdk/azure": "^1.0.13",
-    "@ai-sdk/google": "^1.0.12",
-    "@ai-sdk/openai": "^1.0.11",
-    "ai": "^4.0.22",
     "diff": "^7.0.0",
     "ignore": "^7.0.0",
     "minimatch": "^10.0.1",
@@ -58,10 +53,17 @@
     "simple-git": "^3.27.0",
     "zod": "^3.24.1"
   },
+  "peerDependencies": {
+    "@ai-sdk/anthropic": "^1.0.6",
+    "@ai-sdk/azure": "^1.0.13",
+    "@ai-sdk/google": "^1.0.12",
+    "@ai-sdk/openai": "^1.0.11",
+    "ai": "^4.0.22"
+  },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
-    "@types/diff": "^6.0.0",
-    "@types/node": "^22.10.2",
+    "@types/diff": "^7.0.0",
+    "@types/node": "^22.10.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
