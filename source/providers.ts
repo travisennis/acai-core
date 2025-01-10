@@ -78,6 +78,9 @@ const google = customProvider({
     pro: originalGoogle("gemini-1.5-pro-latest"),
     flash: originalGoogle("gemini-1.5-flash-latest"),
     flash2: originalGoogle("gemini-2.0-flash-exp"),
+    "flash2-search": originalGoogle("gemini-2.0-flash-exp", {
+      useSearchGrounding: true,
+    }),
     flash2thinking: originalGoogle("gemini-2.0-flash-thinking-exp-1219"),
   },
   fallbackProvider: originalGoogle,
@@ -89,6 +92,7 @@ const deepseek = customProvider({
   },
   fallbackProvider: originalDeepseek,
 });
+
 const registry = createProviderRegistry({
   anthropic,
   azure,
@@ -111,6 +115,7 @@ export const Models = [
   "google:pro",
   "google:flash",
   "google:flash2",
+  "google:flash2-search",
   "google:flash2thinking",
   "deepseek:v3",
   "openrouter:llama-3-70-b",
