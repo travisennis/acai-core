@@ -9,6 +9,7 @@ import {
   experimental_createProviderRegistry as createProviderRegistry,
   experimental_customProvider as customProvider,
 } from "ai";
+import { deepseek as originalDeepseek } from "@ai-sdk/deepseek";
 
 const azure = customProvider({
   languageModels: {
@@ -82,12 +83,19 @@ const google = customProvider({
   fallbackProvider: originalGoogle,
 });
 
+const deepseek = customProvider({
+  languageModels: {
+    v3: originalDeepseek("deepseek-chat"),
+  },
+  fallbackProvider: originalDeepseek,
+});
 const registry = createProviderRegistry({
   anthropic,
-  openai,
   azure,
-  openrouter,
+  deepseek,
   google,
+  openai,
+  openrouter,
 });
 
 export const Models = [
@@ -104,6 +112,7 @@ export const Models = [
   "google:flash",
   "google:flash2",
   "google:flash2thinking",
+  "deepseek:v3",
   "openrouter:llama-3-70-b",
   "openrouter:llama-3.3-70b-instruct",
   "openrouter:deepseek-v3",
