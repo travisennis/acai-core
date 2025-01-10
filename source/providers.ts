@@ -21,10 +21,18 @@ const azure = customProvider({
 
 const openrouter = customProvider({
   languageModels: {
-    llama370b: createOpenAI({
+    "llama-3-70-b": createOpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: process.env.OPENROUTER_API_KEY,
     })("meta-llama/llama-3-70b"),
+    "llama-3.3-70b-instruct": createOpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+    })("meta-llama/llama-3.3-70b-instruct"),
+    "deepseek-v3": createOpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+    })("deepseek/deepseek-chat"),
   },
   fallbackProvider: createOpenAI({
     baseURL: "https://openrouter.ai/api/v1",
@@ -82,25 +90,7 @@ const registry = createProviderRegistry({
   google,
 });
 
-type AnthropicModel = "opus" | "sonnet" | "haiku";
-type OpenAIModel =
-  | "gpt-4o"
-  | "gpt-4o-mini"
-  | "gpt-4o-structured"
-  | "gpt-4o-mini-structured"
-  | "o1"
-  | "o1-mini";
-type OpenRouterModel = string;
-type GoogleModel = "pro" | "flash" | "flash2" | "flash2thinking";
-
-export type ModelName =
-  | `anthropic:${AnthropicModel}`
-  | `openai:${OpenAIModel}`
-  | "azure:text"
-  | `openrouter:${OpenRouterModel}`
-  | `google:${GoogleModel}`;
-
-export const Models: ModelName[] = [
+export const Models = [
   "anthropic:sonnet",
   "anthropic:opus",
   "anthropic:haiku",
@@ -114,11 +104,14 @@ export const Models: ModelName[] = [
   "google:flash",
   "google:flash2",
   "google:flash2thinking",
-];
+  "openrouter:llama-3-70-b",
+  "openrouter:llama-3.3-70b-instruct",
+  "openrouter:deepseek-v3",
+] as const;
 
-// export type ModelName = (typeof Models)[number];
+export type ModelName = (typeof Models)[number];
 
-export function isSupportedModel(model: unknown): model is ModelName {
+export function isSupportedModel(model: string): model is ModelName {
   return Models.includes(model as ModelName);
 }
 
