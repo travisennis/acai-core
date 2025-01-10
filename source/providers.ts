@@ -125,7 +125,7 @@ export const Models = [
 
 export type ModelName = (typeof Models)[number];
 
-export function isSupportedModel(model: string): model is ModelName {
+export function isSupportedModel(model: unknown): model is ModelName {
   return Models.includes(model as ModelName);
 }
 
