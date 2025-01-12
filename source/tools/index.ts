@@ -1,5 +1,6 @@
 export * from "./brainstorming.ts";
 export * from "./codeInterpreter.ts";
+export * from "./codeTools.ts";
 export * from "./filesystem.ts";
 export * from "./git.ts";
 export * from "./memory.ts";
