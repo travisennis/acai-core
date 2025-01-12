@@ -49,6 +49,7 @@
     "check": "npx npm-check-updates  --interactive --format group"
   },
   "dependencies": {
+    "cheerio": "^1.0.0",
     "diff": "^7.0.0",
     "ignore": "^7.0.0",
     "minimatch": "^10.0.1",
