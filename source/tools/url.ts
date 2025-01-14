@@ -1,6 +1,6 @@
 import { tool } from "ai";
-import { z } from "zod";
 import * as cheerio from "cheerio";
+import { z } from "zod";
 
 export const createUrlTools = () => {
   return {
@@ -9,39 +9,49 @@ export const createUrlTools = () => {
       parameters: z.object({
         url: z.string().describe("The URL"),
       }),
-      execute: async ({ url }) => {
-        try {
-          const cleaner = HTMLCleaner.new(url);
-          const processedText = await cleaner.clean();
-          // const processedText = (
-          //   text.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || ""
-          // ).replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-
-          return processedText.trim();
-        } catch (error) {
-          return `Error fetching data: ${error}`;
-        }
+      execute: ({ url }) => {
+        return loadUrl(url);
       },
     }),
   };
 };
 
+export async function loadUrl(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+
+    if (contentType?.includes("text/html")) {
+      const cleaner = HTMLCleaner.new(await response.text());
+      const processedText = cleaner.clean();
+      return processedText;
+    }
+    return await response.text();
+  } catch (error) {
+    return `Error fetching data: ${error}`;
+  }
+}
+
 export class HTMLCleaner {
-  static new(url: string): HTMLCleaner {
-    return new HTMLCleaner(url);
+  static new(html: string): HTMLCleaner {
+    return new HTMLCleaner(html);
   }
 
-  private url: string;
+  private html: string;
 
-  private constructor(url: string) {
-    this.url = url;
+  private constructor(html: string) {
+    this.html = html;
   }
   /**
    * Cleans HTML content by removing unnecessary elements and simplifying structure
    * @returns Cleaned HTML content
    */
-  async clean(): Promise<string> {
-    const $ = await cheerio.fromURL(this.url);
+  clean(): string {
+    const $ = cheerio.load(this.html);
 
     // Remove scripts, styles, and comments
     this.removeUnnecessaryElements($);
@@ -53,7 +63,9 @@ export class HTMLCleaner {
     this.removeEmptyElements($);
 
     // Get cleaned HTML
-    return $.html().trim();
+    return $.html()
+      .trim()
+      .replace(/^\s*[\r\n]/gm, "");
   }
 
   /**
@@ -63,11 +75,20 @@ export class HTMLCleaner {
     // Remove all script tags
     $("script").remove();
 
+    // Remove all noscript tags
+    $("noscript").remove();
+
     // Remove all style tags
     $("style").remove();
 
     // Remove all link tags (external stylesheets)
     $('link[rel="stylesheet"]').remove();
+
+    // Remove all preload link tags
+    $('link[rel="preload"]').remove();
+
+    // Remove all link tags
+    $("link").remove();
 
     // Remove comments
     $("*")
@@ -118,20 +139,6 @@ export class HTMLCleaner {
    * Removes empty elements from HTML
    */
   private removeEmptyElements($: cheerio.CheerioAPI): void {
-    let length: number;
-    do {
-      length = $("*").length;
-      $("*").each((_, element) => {
-        const $element = $(element);
-        if (
-          $element.contents().length === 0 &&
-          !["br", "hr", "img", "input", "meta", "link"].includes(
-            (element as any).name,
-          )
-        ) {
-          $element.remove();
-        }
-      });
-    } while (length !== $("*").length); // Repeat until no more elements are removed
+    $(":empty").remove();
   }
 }
