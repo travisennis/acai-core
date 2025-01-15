@@ -46,21 +46,32 @@ export class HTMLCleaner {
   private constructor(html: string) {
     this.html = html;
   }
+
   /**
    * Cleans HTML content by removing unnecessary elements and simplifying structure
-   * @returns Cleaned HTML content
+   * @param {Object} options - Configuration options for cleaning
+   * @param {boolean} [options.simplify=true] - Whether to simplify HTML structure by removing redundant elements
+   * @param {boolean} [options.empty=true] - Whether to remove empty elements from the HTML
+   * @returns {string} Cleaned HTML content with removed whitespace and line breaks
    */
-  clean(): string {
+  clean({
+    simplify = true,
+    empty = true,
+  }: { simplify: boolean; empty: boolean }): string {
     const $ = cheerio.load(this.html);
 
     // Remove scripts, styles, and comments
     this.removeUnnecessaryElements($);
 
     // Simplify HTML structure
-    this.simplifyStructure($);
+    if (simplify) {
+      this.simplifyStructure($);
+    }
 
     // Remove empty elements
-    this.removeEmptyElements($);
+    if (empty) {
+      this.removeEmptyElements($);
+    }
 
     // Get cleaned HTML
     return $.html()
