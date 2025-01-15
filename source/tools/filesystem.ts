@@ -96,7 +96,10 @@ async function searchFiles(
       const fullPath = path.join(currentPath, entry.name);
       try {
         // Validate each path before processing
-        await validatePath(joinWorkingDir(fullPath, workingDir), allowedDirectories);
+        await validatePath(
+          joinWorkingDir(fullPath, workingDir),
+          allowedDirectories,
+        );
 
         // Check if path matches any exclude pattern
         const relativePath = path.relative(rootPath, fullPath);
@@ -409,7 +412,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path }) => {
         try {
-          const validPath = await validatePath(joinWorkingDir(path, workingDir), allowedDirectories);
+          const validPath = await validatePath(
+            joinWorkingDir(path, workingDir),
+            allowedDirectories,
+          );
           await fs.mkdir(validPath, { recursive: true });
           return `Successfully created directory ${path}`;
         } catch (error) {
@@ -507,7 +513,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path, edits, dryRun }) => {
         try {
-          const validPath = await validatePath(joinWorkingDir(path, workingDir), allowedDirectories);
+          const validPath = await validatePath(
+            joinWorkingDir(path, workingDir),
+            allowedDirectories,
+          );
           const result = await applyFileEdits(validPath, edits, dryRun);
           return result;
         } catch (error) {
@@ -530,7 +539,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path, pattern, excludePatterns }) => {
         try {
-          const validPath = await validatePath(joinWorkingDir(path, workingDir), allowedDirectories);
+          const validPath = await validatePath(
+            joinWorkingDir(path, workingDir),
+            allowedDirectories,
+          );
           const results = await searchFiles(
             validPath,
             pattern,
@@ -580,7 +592,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path: userPath, content, encoding }) => {
         try {
-          const filePath = await validatePath(joinWorkingDir(userPath, workingDir), allowedDirectories);
+          const filePath = await validatePath(
+            joinWorkingDir(userPath, workingDir),
+            allowedDirectories,
+          );
           await fs.writeFile(filePath, content, { encoding });
           return `File saved successfully: ${filePath}`;
         } catch (error) {
@@ -628,7 +643,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path }) => {
         try {
-          const validPath = await validatePath(joinWorkingDir(path, workingDir), allowedDirectories);
+          const validPath = await validatePath(
+            joinWorkingDir(path, workingDir),
+            allowedDirectories,
+          );
           const entries = await fs.readdir(validPath, { withFileTypes: true });
           return entries
             .map(
@@ -650,7 +668,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path }) => {
         try {
-          const validPath = await validatePath(joinWorkingDir(path, workingDir), allowedDirectories);
+          const validPath = await validatePath(
+            joinWorkingDir(path, workingDir),
+            allowedDirectories,
+          );
           return directoryTree(validPath);
         } catch (error) {
           return `Failed to show directory tree: ${(error as Error).message}`;
