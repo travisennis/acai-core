@@ -40,8 +40,12 @@ const validateGitRepo = (workingDir: string): void => {
   }
 };
 
-const sanitizePath = (workingDir: string, userPath: string): string => {
-  const resolvedPath = path.resolve(workingDir, userPath);
+function sanitizePath(userPath: string, workingDir: string): string {
+  const normalizedPath = path.isAbsolute(userPath)
+    ? path.normalize(userPath)
+    : path.normalize(path.join(workingDir, userPath));
+
+  const resolvedPath = path.resolve(normalizedPath);
 
   if (!resolvedPath.startsWith(workingDir)) {
     throw new Error(
@@ -50,7 +54,7 @@ const sanitizePath = (workingDir: string, userPath: string): string => {
   }
 
   return resolvedPath;
-};
+}
 
 export const createGitTools = async ({ workingDir }: GitOptions) => {
   return {
