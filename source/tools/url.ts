@@ -90,6 +90,9 @@ export class HTMLCleaner {
     // Remove all link tags
     $("link").remove();
 
+    // Remove all forms
+    $("form").remove();
+
     // Remove comments
     $("*")
       .contents()
