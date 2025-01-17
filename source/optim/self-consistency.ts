@@ -114,16 +114,66 @@ class AdvancedSelfConsistency {
         answer: string;
         frequency: number;
         variants: string[];
+        similarityScores?: number[];
       }>;
       totalResponses: number;
       numUniqueClusters: number;
+      clusterSimilarityMatrix?: number[][];
+    };
+    processSteps: {
+      generationStep: {
+        prompt: string;
+        responses: string[];
+      };
+      clusteringStep: {
+        similarityThreshold: number;
+        rawClusters: string[][];
+      };
+      scoringStep: {
+        clusterScores: number[];
+      };
     };
   }> {
     const responses = await this.generateResponses(systemPrompt, userPrompt);
     const aggregatedResult = this.aggregateResults(responses);
+    const rawClusters = this.clusterSimilarResponses(responses);
+    // Calculate similarity matrix for clusters
+    const clusterSimilarityMatrix = rawClusters.map((cluster1: string[]) =>
+      rawClusters.map((cluster2: string[]) =>
+        this.calculateSimilarity(cluster1[0], cluster2[0]),
+      ),
+    );
+
+    // Add similarity scores to each cluster
+    const enhancedClusters = aggregatedResult.clusters.map((cluster) => ({
+      ...cluster,
+      similarityScores: cluster.variants.map((variant) =>
+        this.calculateSimilarity(variant, cluster.answer),
+      ),
+    }));
+
     return {
       individualResponses: responses,
-      aggregatedResult,
+      aggregatedResult: {
+        ...aggregatedResult,
+        clusters: enhancedClusters,
+        clusterSimilarityMatrix,
+      },
+      processSteps: {
+        generationStep: {
+          prompt: userPrompt,
+          responses,
+        },
+        clusteringStep: {
+          similarityThreshold: this.similarityThreshold,
+          rawClusters: rawClusters,
+        },
+        scoringStep: {
+          clusterScores: enhancedClusters.map(
+            (c) => c.frequency / responses.length,
+          ),
+        },
+      },
     };
   }
 }
@@ -140,22 +190,30 @@ export async function selfConsistency({
   const selfConsistency = new AdvancedSelfConsistency(model);
   const result = await selfConsistency.evaluate(system, prompt);
 
-  console.log("Advanced Self-Consistency Results:");
-  console.log(`Total responses: ${result.aggregatedResult.totalResponses}`);
-  console.log(
-    `Number of unique clusters: ${result.aggregatedResult.numUniqueClusters}`,
+  const formattedOutput = JSON.stringify(
+    {
+      summary: {
+        totalResponses: result.aggregatedResult.totalResponses,
+        uniqueClusters: result.aggregatedResult.numUniqueClusters,
+        clusters: result.aggregatedResult.clusters.map((cluster, i) => ({
+          id: i + 1,
+          answer: cluster.answer,
+          frequency: cluster.frequency,
+          confidence:
+            cluster.frequency / result.aggregatedResult.totalResponses,
+          similarityScores: cluster.similarityScores,
+          variants: cluster.variants,
+        })),
+      },
+      processDetails: result.processSteps,
+    },
+    null,
+    2,
   );
-
-  result.aggregatedResult.clusters.forEach((cluster, i) => {
-    console.log(`\nCluster ${i + 1}:`);
-    console.log(`  Representative answer: ${cluster.answer}`);
-    console.log(`  Frequency: ${cluster.frequency}`);
-    console.log(`  Variants: ${cluster.variants}`);
-  });
 
   if (result.aggregatedResult.clusters.length > 0) {
     return [
-      result.aggregatedResult.clusters[0].answer,
+      `${formattedOutput}\n\nFinal Answer: ${result.aggregatedResult.clusters[0].answer}`,
       selfConsistency.selfConsistencyCompletionTokens,
     ];
   }
