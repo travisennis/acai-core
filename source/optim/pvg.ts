@@ -17,7 +17,6 @@ export class PVG {
     temperature = 0.7,
   ): Promise<string[]> {
     const role = isSneaky ? "sneaky" : "helpful";
-    console.log(`Generating ${numSolutions} ${role} solutions`);
 
     const roleInstruction = `
       You are a problem solver tasked with generating solutions to the given problem. 
@@ -55,8 +54,6 @@ export class PVG {
     initialQuery: string,
     solutions: string[],
   ): Promise<number[]> {
-    console.log(`Verifying ${solutions.length} solutions`);
-
     const verifyPrompt = `${this.systemPrompt}
 You are a verifier tasked with evaluating the correctness and clarity of solutions to the given problem.
 Rate the following solution on a scale from 0 to 10, where:
@@ -108,7 +105,7 @@ Ensure that the Score is a single number between 0 and 10, and the Explanation i
           } else {
             console.warn(`No explanation found for solution ${i + 1}`);
           }
-        } catch (error) {
+        } catch (_error) {
           scores.push(0);
           console.warn(
             `Failed to parse score for solution ${i + 1}. Setting score to 0.`,
@@ -143,17 +140,11 @@ export async function pvg({
   numRounds?: number;
   numSolutions?: number;
 }): Promise<[string, number]> {
-  console.log(
-    `Starting inference-time PV game with ${numRounds} rounds and ${numSolutions} solutions per round`,
-  );
-
   const pvg = new PVG(model, systemPrompt);
   let bestSolution = "";
   let bestScore = -1;
   let currentPrompt = prompt;
   for (let round = 0; round < numRounds; round++) {
-    console.log(`Starting round ${round + 1}`);
-
     const temperature = Math.max(0.2, 0.7 - round * 0.1);
 
     const helpfulSolutions = await pvg.generateSolutions(
@@ -179,17 +170,8 @@ export async function pvg({
     if (roundBestScore > bestScore) {
       bestSolution = roundBestSolution;
       bestScore = roundBestScore;
-      console.log(
-        `New best solution found in round ${round + 1} with score ${bestScore}`,
-      );
-    } else {
-      console.debug(
-        `No improvement in round ${round + 1}. Best score remains ${bestScore}`,
-      );
     }
-
     if (round < numRounds - 1) {
-      console.debug("Refining query for next round");
       const refinePrompt = `
         Based on the original query and the best solution so far, suggest a refined query that might lead to an even better solution.
         Focus on aspects of the problem that were challenging or not fully addressed in the best solution.
@@ -212,13 +194,8 @@ export async function pvg({
 
       pvg.completionTokens += usage.completionTokens;
       currentPrompt = text;
-      console.debug(`Refined query: ${currentPrompt}`);
     }
   }
-
-  console.log(
-    `Inference-time PV game completed. Best solution score: ${bestScore}`,
-  );
 
   return [bestSolution, pvg.tokens];
 }
