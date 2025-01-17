@@ -97,7 +97,7 @@ async function searchFiles(
       try {
         // Validate each path before processing
         await validatePath(
-          joinWorkingDir(fullPath, workingDir),
+          joinWorkingDir(fullPath, allowedDirectories.at(0) ?? ""),
           allowedDirectories,
         );
 
