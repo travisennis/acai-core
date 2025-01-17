@@ -82,5 +82,18 @@ export async function cot({
 }): Promise<[string, number]> {
   const instance = new CoTReflection(model, system);
   const result = await instance.send(prompt);
-  return [result.output, result.completionTokens];
+
+  const fullResult = `Thinking Process:
+${result.thinking}
+
+Reflection:
+${result.reflection}
+
+Adjustments:
+${result.adjustments}
+
+Final Output:
+${result.output}`;
+
+  return [fullResult, result.completionTokens];
 }

@@ -22,6 +22,13 @@ class TreeOfThought {
   private root: ThoughtNode;
   private maxDepth: number;
   private branchingFactor: number;
+  // Track all explored thoughts and their scores
+  private exploredThoughts: Array<{
+    thought: string;
+    score: number;
+    depth: number;
+  }> = [];
+  usageTokens: number;
 
   constructor({
     model,
@@ -41,27 +48,37 @@ class TreeOfThought {
     this.root = new ThoughtNode(prompt);
     this.maxDepth = maxDepth;
     this.branchingFactor = branchingFactor;
+    this.usageTokens = 0;
   }
 
   private async generateThought(parentThought: string): Promise<string> {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: this.model,
       temperature: 0.7,
       maxTokens: 4096,
       system: this.system,
       prompt: `Next thought based on: ${parentThought}`,
     });
+    this.usageTokens += usage.completionTokens;
     return text;
   }
 
   private async evaluateThought(thought: string): Promise<number> {
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: this.model,
       temperature: 0.7,
       maxTokens: 200,
       schema: z.object({ score: z.number() }),
       prompt: `Evaluate: ${thought}`,
     });
+
+    this.exploredThoughts.push({
+      thought,
+      score: object.score,
+      depth: this.exploredThoughts.length,
+    });
+
+    this.usageTokens += usage.completionTokens;
     return object.score;
   }
 
@@ -76,7 +93,7 @@ class TreeOfThought {
     }
   }
 
-  async findBestSolution(): Promise<string> {
+  async findBestSolution(): Promise<[string, string]> {
     await this.expand(this.root, 0);
     const queue: ThoughtNode[] = [this.root];
     let bestNode = this.root;
@@ -94,11 +111,18 @@ class TreeOfThought {
       queue.push(...node.children);
     }
 
-    return bestNode.content;
+    // Format the result to show the exploration process
+    const result = `Exploration Process:\n${this.exploredThoughts
+      .map(
+        (t) => `Depth ${t.depth}:\nThought: ${t.thought}\nScore: ${t.score}\n`,
+      )
+      .join("\n")}\n\nBest Solution:\n${bestNode.content}`;
+
+    return [result, bestNode.content];
   }
 }
 
-export function tot({
+export async function tot({
   model,
   system,
   prompt,
@@ -106,7 +130,10 @@ export function tot({
   model: LanguageModel;
   system?: string;
   prompt: string;
-}): Promise<string> {
+}): Promise<[string, number]> {
   const instance = new TreeOfThought({ model, system, prompt });
-  return instance.findBestSolution();
+
+  const [result, _bestSolution] = await instance.findBestSolution();
+
+  return [result, instance.usageTokens];
 }
