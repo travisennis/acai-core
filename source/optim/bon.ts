@@ -46,5 +46,20 @@ export async function bon({
 
   const bestIndex = ratings.indexOf(Math.max(...ratings));
 
-  return [completions[bestIndex], tokens];
+  const result = `${zip(completions, ratings)
+    .map((i) => `Candidate:\n${i[0]}\nRating:${i[1]}`)
+    .join("\n")}\nBest Result:\n${completions[bestIndex]}`;
+
+  return [result, tokens];
+}
+
+function zip<T, U>(arr1: T[], arr2: U[]): [T, U][] {
+  const length = Math.min(arr1.length, arr2.length);
+  const result: [T, U][] = [];
+
+  for (let i = 0; i < length; i++) {
+    result.push([arr1[i], arr2[i]]);
+  }
+
+  return result;
 }

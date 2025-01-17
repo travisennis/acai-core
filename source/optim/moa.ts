@@ -9,10 +9,8 @@ export async function moa({
   system?: string;
   prompt: string;
 }): Promise<[string, number]> {
-  console.info(`Starting mixtureOfAgents function with model: ${model}`);
   let moaCompletionTokens = 0;
 
-  console.debug(`Generating initial completions for query: ${prompt}`);
   const initialResponse = await Promise.all(
     new Array(3).fill(0).map((_) => {
       return generateText({
@@ -29,11 +27,6 @@ export async function moa({
   moaCompletionTokens += initialResponse.reduce((prev, curr) => {
     return prev + curr.usage.completionTokens;
   }, 0);
-
-  console.info(
-    `Generated ${completions.length} initial completions. Tokens used: ${moaCompletionTokens}`,
-  );
-  console.debug("Preparing critique prompt");
 
   const critiquePrompt = `
     Original query: ${prompt}
@@ -63,10 +56,6 @@ export async function moa({
 
   const critiques = critiqueResponse.text;
   moaCompletionTokens += critiqueResponse.usage.completionTokens;
-  console.info(
-    `Generated critiques. Tokens used: ${critiqueResponse.usage.completionTokens}`,
-  );
-  console.debug("Preparing final prompt");
 
   const finalPrompt = `
     Original query: ${prompt}
@@ -88,7 +77,6 @@ export async function moa({
     Please provide a final, optimized response to the original query:
     `;
 
-  console.debug("Generating final response");
   const finalResponse = await generateText({
     model: model,
     maxTokens: 8192,
@@ -97,11 +85,24 @@ export async function moa({
     prompt: finalPrompt,
   });
 
-  moaCompletionTokens += finalResponse.usage.completionTokens;
-  console.info(
-    `Generated final response. Tokens used: ${finalResponse.usage.completionTokens}`,
-  );
-  console.info(`Total completion tokens used: ${moaCompletionTokens}`);
+  const result = `
+    Candidate 1:
+    ${completions[0]}
 
-  return [finalResponse.text, moaCompletionTokens];
+    Candidate 2:
+    ${completions[1]}
+
+    Candidate 3:
+    ${completions[2]}
+
+    Critiques of all candidates:
+    ${critiques}
+
+    Final response:
+    ${finalResponse.text}
+`;
+
+  moaCompletionTokens += finalResponse.usage.completionTokens;
+
+  return [result, moaCompletionTokens];
 }
