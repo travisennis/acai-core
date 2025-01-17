@@ -3,33 +3,24 @@ import { type LanguageModel, generateText } from "ai";
 class PlanSearch {
   private model: LanguageModel;
   private systemPrompt: string | undefined;
-  private language: string;
 
-  constructor(
-    model: LanguageModel,
-    systemPrompt?: string,
-    programmingLanguage = "typescript",
-  ) {
+  constructor(model: LanguageModel, systemPrompt?: string) {
     this.systemPrompt = systemPrompt;
     this.model = model;
-    this.language = programmingLanguage;
   }
 
   async generateObservations(
     problem: string,
     numObservations = 3,
-  ): Promise<string[]> {
-    const prompt = `You are an expert ${this.language} programmer. You will be given a competitive programming question
-(problem specification). You will return several useful, non-obvious, and correct observations
-about the problem, like hints to solve the problem. You will NOT return any code. Be as
-creative as possible, going beyond what you think is intuitively correct.
+  ): Promise<{ observations: string[]; tokens: number }> {
+    const prompt = `You are an expert problem solver. You will be given a problem. You will return several useful, non-obvious, and correct observations about the problem, like hints to solve the problem. Be as creative as possible, going beyond what you think is intuitively correct.
 
-Here is the competitive programming problem:
+Here is the problem:
 ${problem}
 
 Please provide ${numObservations} observations.`;
 
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: this.model,
       maxTokens: 4096,
       system: this.systemPrompt,
@@ -37,21 +28,20 @@ Please provide ${numObservations} observations.`;
     });
 
     const observations = text.trim().split("\n");
-    return observations.filter((obs) => obs.trim());
+    return {
+      observations: observations.filter((obs) => obs.trim()),
+      tokens: usage.completionTokens,
+    };
   }
 
   async generateDerivedObservations(
     problem: string,
     observations: string[],
     numNewObservations = 2,
-  ): Promise<string[]> {
-    const prompt = `You are an expert ${this.language} programmer. You will be given a competitive programming question
-(problem specification) and several correct observations about the problem.
-You will brainstorm several new, useful, and correct observations about the problem, derived
-from the given observations. You will NOT return any code. Be as creative as possible, going
-beyond what you think is intuitively correct.
+  ): Promise<{ observations: string[]; tokens: number }> {
+    const prompt = `You are an expert problem solver. You will be given a problem and several correct observations about the problem. You will brainstorm several new, useful, and correct observations about the problem, derived from the given observations. Be as creative as possible, going beyond what you think is intuitively correct.
 
-Here is the competitive programming problem:
+Here is the problem:
 ${problem}
 
 Here are the existing observations:
@@ -59,7 +49,7 @@ ${observations.map((obs, i) => `${i + 1}. ${obs}`).join("\n")}
 
 Please provide ${numNewObservations} new observations derived from the existing ones.`;
 
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: this.model,
       maxTokens: 4096,
       system: this.systemPrompt,
@@ -67,14 +57,17 @@ Please provide ${numNewObservations} new observations derived from the existing 
     });
 
     const newObservations = text.trim().split("\n");
-    return newObservations.filter((obs) => obs.trim());
+    return {
+      observations: newObservations.filter((obs) => obs.trim()),
+      tokens: usage.completionTokens,
+    };
   }
 
   async generateSolution(
     problem: string,
     observations: string[],
-  ): Promise<string> {
-    const prompt = `Here is the competitive programming problem:
+  ): Promise<{ solution: string; tokens: number }> {
+    const prompt = `Here is the problem:
 ${problem}
 
 Here are the intelligent observations to help solve the problem:
@@ -86,64 +79,89 @@ go beyond what you would usually come up with and exceeds your narrow intuition.
 Quote relevant parts of the observations EXACTLY before each step of the solution. QUOTING
 IS CRUCIAL.`;
 
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: this.model,
       maxTokens: 4096,
       system: this.systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 
-    return text.trim();
+    return {
+      solution: text.trim(),
+      tokens: usage.completionTokens,
+    };
   }
 
-  async implementSolution(problem: string, solution: string): Promise<string> {
-    const prompt = `You are an expert ${this.language} programmer. You will be given a question (problem specification)
-and a natural language solution/tutorial that describes how to solve the problem. You will
-generate a correct ${this.language} program that matches said specification and tutorial and passes
-all tests. You will NOT return anything except for the program inside markdown codeblocks.
+  async implementSolution(
+    problem: string,
+    solution: string,
+  ): Promise<{ implementation: string; tokens: number }> {
+    const prompt = `You are an expert problem solver. You will be given a problem and a natural language solution/tutorial that describes how to solve the problem. You will generate a solution that matches said specification and tutorial.
 
 Problem:
 ${problem}
 
 Solution:
-${solution}
+${solution}`;
 
-Please implement the solution in ${this.language}.`;
-
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: this.model,
       maxTokens: 4096,
       system: this.systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 
-    return text.trim();
+    return {
+      implementation: text.trim(),
+      tokens: usage.completionTokens,
+    };
   }
 
   async solve(
     problem: string,
     numInitialObservations = 3,
     numDerivedObservations = 2,
-  ): Promise<[string, string]> {
-    const initialObservations = await this.generateObservations(
-      problem,
-      numInitialObservations,
-    );
-    const derivedObservations = await this.generateDerivedObservations(
-      problem,
-      initialObservations,
-      numDerivedObservations,
-    );
-    const allObservations = [...initialObservations, ...derivedObservations];
-    const naturalLanguageSolution = await this.generateSolution(
+  ): Promise<{
+    initialObservations: string[];
+    derivedObservations: string[];
+    naturalLanguageSolution: string;
+    implementation: string;
+    tokens: number;
+  }> {
+    let totalTokens = 0;
+
+    const { observations: initial, tokens: t1 } =
+      await this.generateObservations(problem, numInitialObservations);
+    totalTokens += t1;
+
+    const { observations: derived, tokens: t2 } =
+      await this.generateDerivedObservations(
+        problem,
+        initial,
+        numDerivedObservations,
+      );
+    totalTokens += t2;
+
+    const allObservations = [...initial, ...derived];
+    const { solution, tokens: t3 } = await this.generateSolution(
       problem,
       allObservations,
     );
-    const implementation = await this.implementSolution(
+    totalTokens += t3;
+
+    const { implementation, tokens: t4 } = await this.implementSolution(
       problem,
-      naturalLanguageSolution,
+      solution,
     );
-    return [naturalLanguageSolution, implementation];
+    totalTokens += t4;
+
+    return {
+      initialObservations: initial,
+      derivedObservations: derived,
+      naturalLanguageSolution: solution,
+      implementation,
+      tokens: totalTokens,
+    };
   }
 
   async solveMultiple(
@@ -151,33 +169,57 @@ Please implement the solution in ${this.language}.`;
     n: number,
     numInitialObservations = 3,
     numDerivedObservations = 2,
-  ): Promise<string[]> {
-    const solutions: string[] = [];
+  ): Promise<{
+    attempts: Array<{
+      initialObservations: string[];
+      derivedObservations: string[];
+      naturalLanguageSolution: string;
+      implementation: string;
+    }>;
+    tokens: number;
+  }> {
+    const attempts: Array<{
+      initialObservations: string[];
+      derivedObservations: string[];
+      naturalLanguageSolution: string;
+      implementation: string;
+    }> = [];
+    let totalTokens = 0;
+
     for (let i = 0; i < n; i++) {
-      const [_, implementation] = await this.solve(
+      const result = await this.solve(
         problem,
         numInitialObservations,
         numDerivedObservations,
       );
-      solutions.push(implementation);
+      totalTokens += result.tokens;
+      attempts.push({
+        initialObservations: result.initialObservations,
+        derivedObservations: result.derivedObservations,
+        naturalLanguageSolution: result.naturalLanguageSolution,
+        implementation: result.implementation,
+      });
     }
-    return solutions;
+
+    return {
+      attempts,
+      tokens: totalTokens,
+    };
   }
 }
 
-export function plansearch({
+export async function plansearch({
   model,
   system,
   prompt,
-  language = "typescript",
   n = 1,
 }: {
   model: LanguageModel;
   system?: string;
   prompt: string;
-  language?: string;
   n?: number;
-}): Promise<string[]> {
-  const planner = new PlanSearch(model, system, language);
-  return planner.solveMultiple(prompt, n);
+}): Promise<[string, number]> {
+  const planner = new PlanSearch(model, system);
+  const result = await planner.solveMultiple(prompt, n);
+  return [JSON.stringify(result.attempts, null, 2), result.tokens];
 }

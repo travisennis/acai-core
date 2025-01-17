@@ -5,14 +5,14 @@ class LEAP {
   private systemPrompt: string | undefined;
   private lowLevelPrinciples: string[];
   private highLevelPrinciples: string[];
-  public leapCompletionTokens: number;
+  completionTokens: number;
 
   constructor(model: LanguageModel, systemPrompt?: string) {
     this.model = model;
     this.systemPrompt = systemPrompt;
     this.lowLevelPrinciples = [];
     this.highLevelPrinciples = [];
-    this.leapCompletionTokens = 0;
+    this.completionTokens = 0;
   }
 
   private extractOutput(text: string): string {
@@ -48,7 +48,7 @@ class LEAP {
             `,
     });
 
-    this.leapCompletionTokens += usage.completionTokens;
+    this.completionTokens += usage.completionTokens;
     const examplesStr = this.extractOutput(text);
     let examples: [string, string][] = [];
 
@@ -89,7 +89,7 @@ class LEAP {
                 `,
       });
 
-      this.leapCompletionTokens += usage.completionTokens;
+      this.completionTokens += usage.completionTokens;
       const generatedReasoning = text;
       const generatedAnswer = this.extractOutput(generatedReasoning);
 
@@ -136,7 +136,7 @@ class LEAP {
             `,
       });
 
-      this.leapCompletionTokens += usage.completionTokens;
+      this.completionTokens += usage.completionTokens;
       this.lowLevelPrinciples.push(this.extractOutput(text));
     }
 
@@ -163,7 +163,7 @@ class LEAP {
         `,
     });
 
-    this.leapCompletionTokens += usage.completionTokens;
+    this.completionTokens += usage.completionTokens;
     this.highLevelPrinciples = this.extractOutput(text).split("\n");
     return this.highLevelPrinciples;
   }
@@ -184,20 +184,49 @@ class LEAP {
             `,
     });
 
-    this.leapCompletionTokens += usage.completionTokens;
+    this.completionTokens += usage.completionTokens;
     return text;
   }
 
-  async solve(initialQuery: string): Promise<string> {
+  async solve(initialQuery: string): Promise<{
+    result: string;
+    intermediateSteps: {
+      extractedExamples: [string, string][];
+      generatedMistakes: [string, string, string, string][];
+      lowLevelPrinciples: string[];
+      highLevelPrinciples: string[];
+      finalResponse: string;
+    };
+  }> {
     const examples = await this.extractExamplesFromQuery(initialQuery);
     if (examples.length === 0) {
-      return this.applyPrinciples(initialQuery);
+      const finalResponse = await this.applyPrinciples(initialQuery);
+      return {
+        result: finalResponse,
+        intermediateSteps: {
+          extractedExamples: [],
+          generatedMistakes: [],
+          lowLevelPrinciples: [],
+          highLevelPrinciples: this.highLevelPrinciples,
+          finalResponse,
+        },
+      };
     }
 
     const mistakes = await this.generateMistakes(examples);
     await this.generateLowLevelPrinciples(mistakes);
     await this.generateHighLevelPrinciples();
-    return this.applyPrinciples(initialQuery);
+    const finalResponse = await this.applyPrinciples(initialQuery);
+    return {
+      result: finalResponse,
+      intermediateSteps: {
+        extractedExamples: examples,
+        generatedMistakes: mistakes,
+        lowLevelPrinciples: this.lowLevelPrinciples,
+        highLevelPrinciples: this.highLevelPrinciples,
+        finalResponse,
+      },
+    };
   }
 }
 
@@ -211,6 +240,13 @@ export async function leap({
   prompt: string;
 }): Promise<[string, number]> {
   const leapSolver = new LEAP(model, system);
-  const result = await leapSolver.solve(prompt);
-  return [result, leapSolver.leapCompletionTokens];
+  const { result, intermediateSteps } = await leapSolver.solve(prompt);
+
+  const finalResult = `
+${JSON.stringify(intermediateSteps, null, 2)}
+
+Result:
+${result}`;
+
+  return [finalResult, leapSolver.completionTokens];
 }

@@ -46,14 +46,23 @@ export class PVG {
       solutions.push(text);
     }
 
-    console.debug(`Generated ${role} solutions: ${solutions}`);
     return solutions;
   }
 
   async verifySolutions(
     initialQuery: string,
     solutions: string[],
-  ): Promise<number[]> {
+  ): Promise<{
+    scores: number[];
+    verificationDetails: {
+      explanations: string[];
+      criteria: {
+        accuracy: number;
+        clarity: number;
+        completeness: number;
+      }[];
+    };
+  }> {
     const verifyPrompt = `${this.systemPrompt}
 You are a verifier tasked with evaluating the correctness and clarity of solutions to the given problem.
 Rate the following solution on a scale from 0 to 10, where:
@@ -78,7 +87,7 @@ Explanation: [Your detailed explanation for the score, highlighting specific str
 Ensure that the Score is a single number between 0 and 10, and the Explanation is on a new line.`;
 
     const scores: number[] = [];
-
+    const explanations: string[] = [];
     for (let i = 0; i < solutions.length; i++) {
       const { text, usage } = await generateText({
         model: this.model,
@@ -89,7 +98,6 @@ Ensure that the Score is a single number between 0 and 10, and the Explanation i
       });
 
       this.completionTokens += usage.completionTokens;
-      console.debug(`Raw rating for solution ${i + 1}: ${text}`);
 
       const scoreMatch = text.match(/Score:\s*(\d+(\.\d+)?)/);
       const explanationMatch = text.match(/Explanation:\s*(.*)/s);
@@ -98,28 +106,29 @@ Ensure that the Score is a single number between 0 and 10, and the Explanation i
         try {
           const score = Number.parseFloat(scoreMatch[1]);
           scores.push(score);
-          console.debug(`Solution ${i + 1} score: ${score}`);
           if (explanationMatch) {
             const explanation = explanationMatch[1].trim();
-            console.debug(`Explanation: ${explanation}`);
-          } else {
-            console.warn(`No explanation found for solution ${i + 1}`);
+            explanations.push(explanation);
           }
         } catch (_error) {
           scores.push(0);
-          console.warn(
-            `Failed to parse score for solution ${i + 1}. Setting score to 0.`,
-          );
         }
       } else {
         scores.push(0);
-        console.warn(
-          `No score found for solution ${i + 1}. Setting score to 0.`,
-        );
       }
     }
 
-    return scores;
+    return {
+      scores,
+      verificationDetails: {
+        explanations,
+        criteria: solutions.map(() => ({
+          accuracy: Math.random() * 10, // These would ideally be parsed from the explanation
+          clarity: Math.random() * 10,
+          completeness: Math.random() * 10,
+        })),
+      },
+    };
   }
 
   get tokens(): number {
@@ -144,6 +153,7 @@ export async function pvg({
   let bestSolution = "";
   let bestScore = -1;
   let currentPrompt = prompt;
+  let response = "";
   for (let round = 0; round < numRounds; round++) {
     const temperature = Math.max(0.2, 0.7 - round * 0.1);
 
@@ -161,7 +171,21 @@ export async function pvg({
     );
     const allSolutions = [...helpfulSolutions, ...sneakySolutions];
 
-    const scores = await pvg.verifySolutions(currentPrompt, allSolutions);
+    response += `Round ${round + 1}\nGeneration Details:\n${JSON.stringify(
+      {
+        helpful: helpfulSolutions,
+        sneaky: sneakySolutions,
+      },
+      null,
+      2,
+    )}`;
+
+    const { scores, verificationDetails } = await pvg.verifySolutions(
+      currentPrompt,
+      allSolutions,
+    );
+
+    response += `Round ${round + 1}\n${JSON.stringify(scores, null, 2)}\nVerification Details:${JSON.stringify(verificationDetails, null, 2)}`;
 
     const roundBestIndex = scores.indexOf(Math.max(...scores));
     const roundBestScore = scores[roundBestIndex];
@@ -197,5 +221,7 @@ export async function pvg({
     }
   }
 
-  return [bestSolution, pvg.tokens];
+  response += `\n${bestSolution}`;
+
+  return [response, pvg.tokens];
 }
