@@ -11,7 +11,11 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
       execute: async () => {
         const config = await readProjectConfig();
         const buildCommand = config.build || "npm run build";
-        return asyncExec(buildCommand, baseDir);
+        try {
+          return asyncExec(buildCommand, baseDir);
+        } catch (error) {
+          return `Failed to execute build command: ${(error as Error).message}`;
+        }
       },
     }),
     lintCode: tool({
@@ -21,7 +25,11 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
       execute: async () => {
         const config = await readProjectConfig();
         const lintCommand = config.lint || "npm run lint";
-        return asyncExec(lintCommand, baseDir);
+        try {
+          return asyncExec(lintCommand, baseDir);
+        } catch (error) {
+          return `Failed to execute lint command: ${(error as Error).message}`;
+        }
       },
     }),
     formatCode: tool({
@@ -31,7 +39,11 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
       execute: async () => {
         const config = await readProjectConfig();
         const formatCommand = config.format || "npm run format";
-        return asyncExec(formatCommand, baseDir);
+        try {
+          return asyncExec(formatCommand, baseDir);
+        } catch (error) {
+          return `Failed to execute format command: ${(error as Error).message}`;
+        }
       },
     }),
   };
