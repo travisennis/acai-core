@@ -47,8 +47,10 @@ export async function bon({
   const bestIndex = ratings.indexOf(Math.max(...ratings));
 
   const result = `${zip(completions, ratings)
-    .map((i) => `Candidate:\n${i[0]}\nRating:${i[1]}`)
-    .join("\n")}\nBest Result:\n${completions[bestIndex]}`;
+    .map(
+      (item, idx) => `Candidate ${idx + 1}:\n${item[0]}\n\nRating:${item[1]}`,
+    )
+    .join("\n\n")}n\nBest Result:\n${completions[bestIndex]}`;
 
   return [result, tokens];
 }
