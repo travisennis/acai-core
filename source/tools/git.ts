@@ -155,6 +155,47 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
       },
     }),
 
+    gitLog: tool({
+      description: "Gets the log of the git repo at the given path.",
+      parameters: z.object({
+        path: z.string(),
+      }),
+      execute: async ({ path }) => {
+        try {
+          validateGitRepo(workingDir);
+          const baseDir = sanitizePath(workingDir, path);
+          const git = simpleGit({ baseDir });
+
+          const log = await git.log();
+
+          return `Log:\n ${JSON.stringify(log, undefined, 2)}`;
+        } catch (error) {
+          return `Error getting log: ${(error as Error).message}`;
+        }
+      },
+    }),
+
+    gitShow: tool({
+      description: "Shows the contents of a commit",
+      parameters: z.object({
+        path: z.string(),
+        revision: z.string(),
+      }),
+      execute: async ({ path, revision }) => {
+        try {
+          validateGitRepo(workingDir);
+          const baseDir = sanitizePath(workingDir, path);
+          const git = simpleGit({ baseDir });
+
+          const show = await git.show(revision);
+
+          return `Show:\n ${JSON.stringify(show, undefined, 2)}`;
+        } catch (error) {
+          return `Error getting show: ${(error as Error).message}`;
+        }
+      },
+    }),
+
     gitDiff: tool({
       description: "Shows differences between branches or commits",
       parameters: z.object({
