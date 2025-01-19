@@ -56,7 +56,7 @@ ${c1Response}
     prompt: finalPrompt,
   });
 
-  const result = `First generated response (C1):\n${c1Response}\n\nSecond generated response (C2):\n${c2Response}\n\nFinal response:\n${c3Response}`;
+  const result = `First generated response (C1):\n${c1Response}\n\nDerived query:\n${q2Response}\n\nSecond generated response (C2):\n${c2Response}\n\nFinal response:\n${c3Response}`;
 
   rtoCompletionTokens += c3Usage.completionTokens;
 

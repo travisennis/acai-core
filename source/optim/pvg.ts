@@ -155,6 +155,8 @@ export async function pvg({
   let currentPrompt = prompt;
   let response = "";
   for (let round = 0; round < numRounds; round++) {
+    response += `Round ${round + 1}\n\n`;
+
     const temperature = Math.max(0.2, 0.7 - round * 0.1);
 
     const helpfulSolutions = await pvg.generateSolutions(
@@ -171,21 +173,22 @@ export async function pvg({
     );
     const allSolutions = [...helpfulSolutions, ...sneakySolutions];
 
-    response += `Round ${round + 1}\nGeneration Details:\n${JSON.stringify(
+    response += `Generation Details:\n${JSON.stringify(
       {
         helpful: helpfulSolutions,
         sneaky: sneakySolutions,
       },
       null,
       2,
-    )}`;
+    )}\n\n`;
 
     const { scores, verificationDetails } = await pvg.verifySolutions(
       currentPrompt,
       allSolutions,
     );
 
-    response += `Round ${round + 1}\n${JSON.stringify(scores, null, 2)}\nVerification Details:${JSON.stringify(verificationDetails, null, 2)}`;
+    response += `Scores:\n${JSON.stringify(scores, null, 2)}\n\n`;
+    response += `Verification Details:\n${JSON.stringify(verificationDetails, null, 2)}\n\n`;
 
     const roundBestIndex = scores.indexOf(Math.max(...scores));
     const roundBestScore = scores[roundBestIndex];
@@ -195,6 +198,9 @@ export async function pvg({
       bestSolution = roundBestSolution;
       bestScore = roundBestScore;
     }
+
+    response += `Current best solution:\n${bestSolution}`;
+
     if (round < numRounds - 1) {
       const refinePrompt = `
         Based on the original query and the best solution so far, suggest a refined query that might lead to an even better solution.
@@ -218,10 +224,12 @@ export async function pvg({
 
       pvg.completionTokens += usage.completionTokens;
       currentPrompt = text;
+
+      response += `Refined prompt:\n${currentPrompt}\n\n`;
     }
   }
 
-  response += `\n${bestSolution}`;
+  response += `Final solution:\n${bestSolution}`;
 
   return [response, pvg.tokens];
 }

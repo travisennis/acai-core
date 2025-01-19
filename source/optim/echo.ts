@@ -32,7 +32,10 @@ class ECHOImplementation {
       points: Array<{ embedding: number[]; text: string }>;
     }>,
   ) {
-    const demonstrations = [];
+    const demonstrations: {
+      question: { embedding: number[]; text: string };
+      rationale: string;
+    }[] = [];
     for (const cluster of clusters) {
       const sortedQuestions = this.sortClusterPoints(cluster);
       for (const question of sortedQuestions) {
@@ -129,7 +132,13 @@ class ECHOImplementation {
         text: string;
       }[];
     }[];
-    let previousClusters = null;
+    let previousClusters: {
+      centroid: number[];
+      points: {
+        embedding: number[];
+        text: string;
+      }[];
+    }[] = [];
     const maxIterations = 100;
     let iteration = 0;
 
@@ -194,11 +203,10 @@ class ECHOImplementation {
     this.tokens += usage.totalTokens;
     return text === "yes";
   }
-
   private sortClusterPoints(cluster: {
     centroid: number[];
     points: Array<{ embedding: number[]; text: string }>;
-  }) {
+  }): { embedding: number[]; text: string }[] {
     return [...cluster.points].sort(
       (a, b) =>
         this.euclideanDistance(a.embedding, cluster.centroid) -
@@ -220,8 +228,8 @@ class ECHOImplementation {
   }
 
   private clustersEqual(
-    c1: Array<{ centroid: number[]; points: any[] }>,
-    c2: Array<{ centroid: number[]; points: any[] }>,
+    c1: Array<{ centroid: number[] }>,
+    c2: Array<{ centroid: number[] }>,
   ) {
     return c1.every((cluster, i) =>
       cluster.centroid.every(
@@ -243,7 +251,6 @@ function zip<T, U>(arr1: T[], arr2: U[]): [T, U][] {
 export async function echo({
   model,
   prompt,
-  system,
   embeddingModel,
 }: {
   model: LanguageModel;
