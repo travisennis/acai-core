@@ -20,25 +20,21 @@ const azure = customProvider({
   },
 });
 
+const openRouterClient = createOpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
 const openrouter = customProvider({
   languageModels: {
-    "llama-3-70-b": createOpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
-    })("meta-llama/llama-3-70b"),
-    "llama-3.3-70b-instruct": createOpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
-    })("meta-llama/llama-3.3-70b-instruct"),
-    "deepseek-v3": createOpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
-    })("deepseek/deepseek-chat"),
+    "llama-3-70-b": openRouterClient("meta-llama/llama-3-70b"),
+    "llama-3.3-70b-instruct": openRouterClient(
+      "meta-llama/llama-3.3-70b-instruct",
+    ),
+    "deepseek-v3": openRouterClient("deepseek/deepseek-chat"),
+    "deepseek-r1": openRouterClient("deepseek/deepseek-r1"),
   },
-  fallbackProvider: createOpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: process.env.OPENROUTER_API_KEY,
-  }),
+  fallbackProvider: openRouterClient,
 });
 
 const anthropic = customProvider({
@@ -121,6 +117,7 @@ export const Models = [
   "openrouter:llama-3-70-b",
   "openrouter:llama-3.3-70b-instruct",
   "openrouter:deepseek-v3",
+  "openrouter:deepseek-r1",
 ] as const;
 
 export type ModelName = (typeof Models)[number];
