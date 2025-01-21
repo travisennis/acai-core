@@ -10,6 +10,7 @@ import {
   experimental_customProvider as customProvider,
 } from "ai";
 import { deepseek as originalDeepseek } from "@ai-sdk/deepseek";
+import { createOllama } from "ollama-ai-provider";
 
 const azure = customProvider({
   languageModels: {
@@ -89,6 +90,11 @@ const deepseek = customProvider({
   fallbackProvider: originalDeepseek,
 });
 
+const ollama = customProvider({
+  languageModels: { "llama3.1": createOllama()("llama3.1") },
+  fallbackProvider: createOllama(),
+});
+
 const registry = createProviderRegistry({
   anthropic,
   azure,
@@ -96,6 +102,7 @@ const registry = createProviderRegistry({
   google,
   openai,
   openrouter,
+  ollama,
 });
 
 export const Models = [
@@ -118,6 +125,7 @@ export const Models = [
   "openrouter:llama-3.3-70b-instruct",
   "openrouter:deepseek-v3",
   "openrouter:deepseek-r1",
+  "ollama:llama3.1",
 ] as const;
 
 export type ModelName = (typeof Models)[number];
