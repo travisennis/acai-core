@@ -297,10 +297,6 @@ async function generateDirectoryTree(
 
     const items = await fs.readdir(dirPath);
     const filteredItems = ig.filter(items);
-    if (level === 1) {
-      console.dir(items);
-      console.dir(filteredItems);
-    }
 
     for (let i = 0; i < filteredItems.length; i++) {
       const item = filteredItems[i];
