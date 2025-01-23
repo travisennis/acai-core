@@ -59,9 +59,9 @@ export const createCodeInterpreterTool = ({
   return {
     codeInterpreter: tool({
       description:
-        "When you send a message containing javascript code to javascript, it will be executed in a node:vm environment. This tool will respond with the output of the execution or time out after 120.0 seconds. In order to return a result from running this code, use a return statement. Internet access for this session is disabled. Do not make external web requests or API calls as they will fail.",
+        "The Javascript code to execute. The code will be executed in a node:vm environment. This tool will respond with the output of the execution or time out after 120.0 seconds. In order to return a result from running this code, use a return statement. Do not use console.log. The code will run inside of self-executing anonymous function: \`(function() { ${code} })()` Internet access for this session is disabled. Do not make external web requests or API calls as they will fail. Fileystem access for this vm is disabled. Do not make filesystem calls as they will fail.",
       parameters: z.object({
-        code: z.string().describe("Javascript code to be exectued."),
+        code: z.string().describe("Javascript code to be executed."),
       }),
       execute: ({ code }: { code: string }) => {
         return codeInterpreterJavascript(code, permissions ?? []);
