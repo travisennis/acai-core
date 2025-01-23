@@ -85,7 +85,8 @@ const google = customProvider({
 
 const deepseek = customProvider({
   languageModels: {
-    v3: originalDeepseek("deepseek-chat"),
+    "deepseek-chat": originalDeepseek("deepseek-chat"),
+    "deepseek-reasoner": originalDeepseek("deepseek-reasoner")
   },
   fallbackProvider: originalDeepseek,
 });
@@ -120,7 +121,8 @@ export const Models = [
   "google:flash2",
   "google:flash2-search",
   "google:flash2thinking",
-  "deepseek:v3",
+  "deepseek:deepseek-chat",
+  "deepseek:deepseek-reasoner",
   "openrouter:llama-3-70-b",
   "openrouter:llama-3.3-70b-instruct",
   "openrouter:deepseek-v3",
