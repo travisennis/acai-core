@@ -1,5 +1,51 @@
 import { type LanguageModel, generateText } from "ai";
 
+interface PlanSearchResult {
+  initialObservations: string[];
+  derivedObservations: string[];
+  naturalLanguageSolution: string;
+  implementation: string;
+}
+
+function formatPlanSearchResult(result: PlanSearchResult): string {
+  // Helper function to format a list of observations with a title
+  // Returns empty string if no observations, otherwise formats with bullet points
+  const formatObservations = (
+    observations: string[],
+    title: string,
+  ): string => {
+    if (!observations.length) return "";
+    return `${title}:\n${observations.map((obs) => `  • ${obs}`).join("\n")}\n`;
+  };
+
+  // Creates array with following elements:
+  // 1. Formatted initial observations
+  // 2. Formatted derived observations
+  // 3. "Solution:" header
+  // 4. The natural language solution
+  // 5. "Implementation:" header
+  // 6. The implementation details
+  return (
+    [
+      formatObservations(result.initialObservations, "Initial Observations"),
+      formatObservations(result.derivedObservations, "Derived Observations"),
+      "\nSolution:\n",
+      result.naturalLanguageSolution,
+      "\nImplementation:\n",
+      result.implementation,
+    ]
+      // filter(Boolean) removes any falsy values (empty strings, null, undefined)
+      // This ensures we don't get extra newlines from empty sections
+      .filter(Boolean)
+      // Join all remaining elements with newlines between them
+      .join("\n")
+  );
+}
+
+interface TokenCount {
+  tokens: number;
+}
+
 class PlanSearch {
   private model: LanguageModel;
   private systemPrompt: string | undefined;
@@ -13,12 +59,10 @@ class PlanSearch {
     problem: string,
     numObservations = 3,
   ): Promise<{ observations: string[]; tokens: number }> {
-    const prompt = `You are an expert problem solver. You will be given a problem. You will return several useful, non-obvious, and correct observations about the problem, like hints to solve the problem. Be as creative as possible, going beyond what you think is intuitively correct.
+    const prompt = `Generate ${numObservations} specific, non-obvious, and correct observations about the following problem. Each observation should be numbered and start on a new line.
 
-Here is the problem:
-${problem}
-
-Please provide ${numObservations} observations.`;
+Problem:
+${problem}`;
 
     const { text, usage } = await generateText({
       model: this.model,
@@ -27,7 +71,13 @@ Please provide ${numObservations} observations.`;
       messages: [{ role: "user", content: prompt }],
     });
 
-    const observations = text.trim().split("\n");
+    // Improved parsing
+    const observations = text
+      .trim()
+      .split("\n")
+      .filter((line) => /^\d+\./.test(line.trim())) // Only keep numbered lines
+      .map((obs) => obs.replace(/^\d+\.\s*/, "").trim()); // Remove numbers
+
     return {
       observations: observations.filter((obs) => obs.trim()),
       tokens: usage.completionTokens,
@@ -39,15 +89,13 @@ Please provide ${numObservations} observations.`;
     observations: string[],
     numNewObservations = 2,
   ): Promise<{ observations: string[]; tokens: number }> {
-    const prompt = `You are an expert problem solver. You will be given a problem and several correct observations about the problem. You will brainstorm several new, useful, and correct observations about the problem, derived from the given observations. Be as creative as possible, going beyond what you think is intuitively correct.
+    const prompt = `Based on the existing observations, generate ${numNewObservations} new, derived observations about the following problem. Each new observation should build upon or combine insights from the existing observations. Number each new observation.
 
-Here is the problem:
+Problem:
 ${problem}
 
-Here are the existing observations:
-${observations.map((obs, i) => `${i + 1}. ${obs}`).join("\n")}
-
-Please provide ${numNewObservations} new observations derived from the existing ones.`;
+Existing observations:
+${observations.map((obs, i) => `${i + 1}. ${obs}`).join("\n")}`;
 
     const { text, usage } = await generateText({
       model: this.model,
@@ -67,17 +115,18 @@ Please provide ${numNewObservations} new observations derived from the existing 
     problem: string,
     observations: string[],
   ): Promise<{ solution: string; tokens: number }> {
-    const prompt = `Here is the problem:
+    const prompt = `Problem:
 ${problem}
 
-Here are the intelligent observations to help solve the problem:
-${observations.map((obs, i) => `Observation ${i + 1}: ${obs}`).join("\n")}
+Relevant observations:
+${observations.map((obs, i) => `${i + 1}. ${obs}`).join("\n")}
 
-Use these observations above to brainstorm a natural language solution to the problem above.
-Note that your intuition may lead you astray, so come up with simple, creative ideas that
-go beyond what you would usually come up with and exceeds your narrow intuition.
-Quote relevant parts of the observations EXACTLY before each step of the solution. QUOTING
-IS CRUCIAL.`;
+Using the above observations, construct a step-by-step solution to the problem. For each step:
+1. Quote the specific observation(s) that inform that step
+2. Explain how the observation leads to the solution step
+3. Show your work/reasoning
+
+Conclude with a clear, final answer.`;
 
     const { text, usage } = await generateText({
       model: this.model,
@@ -96,13 +145,16 @@ IS CRUCIAL.`;
     problem: string,
     solution: string,
   ): Promise<{ implementation: string; tokens: number }> {
-    const prompt = `You are an expert problem solver. You will be given a problem and a natural language solution/tutorial that describes how to solve the problem. You will generate a solution that matches said specification and tutorial.
-
-Problem:
+    const prompt = `Problem:
 ${problem}
 
-Solution:
-${solution}`;
+Solution specification:
+${solution}
+
+Generate a concrete implementation of the solution above. The implementation should:
+1. Be directly executable/applicable
+2. Follow all specifications from the solution
+3. Be as concise as possible while maintaining clarity`;
 
     const { text, usage } = await generateText({
       model: this.model,
@@ -121,13 +173,7 @@ ${solution}`;
     problem: string,
     numInitialObservations = 3,
     numDerivedObservations = 2,
-  ): Promise<{
-    initialObservations: string[];
-    derivedObservations: string[];
-    naturalLanguageSolution: string;
-    implementation: string;
-    tokens: number;
-  }> {
+  ): Promise<PlanSearchResult & TokenCount> {
     let totalTokens = 0;
 
     const { observations: initial, tokens: t1 } =
@@ -170,20 +216,10 @@ ${solution}`;
     numInitialObservations = 3,
     numDerivedObservations = 2,
   ): Promise<{
-    attempts: Array<{
-      initialObservations: string[];
-      derivedObservations: string[];
-      naturalLanguageSolution: string;
-      implementation: string;
-    }>;
+    attempts: Array<PlanSearchResult>;
     tokens: number;
   }> {
-    const attempts: Array<{
-      initialObservations: string[];
-      derivedObservations: string[];
-      naturalLanguageSolution: string;
-      implementation: string;
-    }> = [];
+    const attempts: Array<PlanSearchResult> = [];
     let totalTokens = 0;
 
     for (let i = 0; i < n; i++) {
@@ -221,5 +257,8 @@ export async function plansearch({
 }): Promise<[string, number]> {
   const planner = new PlanSearch(model, system);
   const result = await planner.solveMultiple(prompt, n);
-  return [JSON.stringify(result.attempts, null, 2), result.tokens];
+  const response = result.attempts
+    .map((attempt) => formatPlanSearchResult(attempt))
+    .join("\n\n");
+  return [response, result.tokens];
 }
