@@ -1,4 +1,5 @@
 import { type LanguageModel, generateText } from "ai";
+import dedent from "../dedent.ts";
 
 export async function moa({
   model,
@@ -28,7 +29,7 @@ export async function moa({
     return prev + curr.usage.completionTokens;
   }, 0);
 
-  const critiquePrompt = `
+  const critiquePrompt = dedent`
     Original query: ${prompt}
 
     I will present you with three candidate responses to the original query. Please analyze and critique each response, discussing their strengths and weaknesses. Provide your analysis for each candidate separately.
@@ -45,7 +46,6 @@ export async function moa({
     Please provide your critique for each candidate:
     `;
 
-  console.debug("Generating critiques");
   const critiqueResponse = await generateText({
     model: model,
     maxTokens: 512,
@@ -57,7 +57,7 @@ export async function moa({
   const critiques = critiqueResponse.text;
   moaCompletionTokens += critiqueResponse.usage.completionTokens;
 
-  const finalPrompt = `
+  const finalPrompt = dedent`
     Original query: ${prompt}
 
     Based on the following candidate responses and their critiques, generate a final response to the original query.
@@ -85,7 +85,7 @@ export async function moa({
     prompt: finalPrompt,
   });
 
-  const result = `
+  const result = dedent`
     Candidate 1:
     ${completions[0]}
 

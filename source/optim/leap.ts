@@ -1,4 +1,5 @@
 import { type LanguageModel, generateText } from "ai";
+import dedent from "../dedent.ts";
 
 class LEAP {
   private model: LanguageModel;
@@ -28,7 +29,7 @@ class LEAP {
       maxTokens: 4096,
       temperature: 1.0,
       system: this.systemPrompt,
-      prompt: `
+      prompt: dedent`
                 Analyze the following query and determine if it contains few-shot examples.
                 If it does, extract the examples and their corresponding answers.
                 Format the examples as a JSON array of objects, where each object has "question" and "answer" fields.
@@ -80,7 +81,7 @@ class LEAP {
         maxTokens: 4096,
         temperature: 0.7,
         system: this.systemPrompt,
-        prompt: `
+        prompt: dedent`
                     Instruction: Answer the following question step by step. To induce a mistake, 
                     deliberately introduce an error in your reasoning or calculation.
                     Question: ${question}
@@ -120,7 +121,7 @@ class LEAP {
         maxTokens: 4096,
         temperature: 1.0,
         system: this.systemPrompt,
-        prompt: `
+        prompt: dedent`
                 Question: ${question}
                 Generated Reasoning: ${generatedReasoning}
                 Generated Answer: ${generatedAnswer}
@@ -150,7 +151,7 @@ class LEAP {
       maxTokens: 4096,
       temperature: 1.0,
       system: this.systemPrompt,
-      prompt: `
+      prompt: dedent`
             Low-level principles: ${principlesText}
             Create a list of *unique* and insightful principles to improve future responses based
             on the analysis above.
@@ -175,7 +176,7 @@ class LEAP {
       maxTokens: 4096,
       temperature: 1.0,
       system: this.systemPrompt,
-      prompt: `
+      prompt: dedent`
                 Please answer the following query. Keep in mind these principles:
 
                 ${principlesText}
@@ -242,7 +243,7 @@ export async function leap({
   const leapSolver = new LEAP(model, system);
   const { result, intermediateSteps } = await leapSolver.solve(prompt);
 
-  const finalResult = `
+  const finalResult = dedent`
 ${JSON.stringify(intermediateSteps, null, 2)}
 
 Result:

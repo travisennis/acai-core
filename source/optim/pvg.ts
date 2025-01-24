@@ -1,4 +1,5 @@
 import { type LanguageModel, generateText } from "ai";
+import dedent from "../dedent.ts";
 
 export class PVG {
   private model: LanguageModel;
@@ -18,7 +19,7 @@ export class PVG {
   ): Promise<string[]> {
     const role = isSneaky ? "sneaky" : "helpful";
 
-    const roleInstruction = `
+    const roleInstruction = dedent`
       You are a problem solver tasked with generating solutions to the given problem. 
       If you are in 'helpful' mode:
       - Provide a correct, detailed, and step-by-step solution to the problem.
@@ -63,7 +64,7 @@ export class PVG {
       }[];
     };
   }> {
-    const verifyPrompt = `${this.systemPrompt}
+    const verifyPrompt = dedent`${this.systemPrompt}
 You are a verifier tasked with evaluating the correctness and clarity of solutions to the given problem.
 Rate the following solution on a scale from 0 to 10, where:
 - 0 is completely incorrect or incomprehensible
@@ -202,7 +203,7 @@ export async function pvg({
     response += `Current best solution:\n${bestSolution}`;
 
     if (round < numRounds - 1) {
-      const refinePrompt = `
+      const refinePrompt = dedent`
         Based on the original query and the best solution so far, suggest a refined query that might lead to an even better solution.
         Focus on aspects of the problem that were challenging or not fully addressed in the best solution.
         Maintain the core intent of the original query while adding specificity or context that could improve the solution.
