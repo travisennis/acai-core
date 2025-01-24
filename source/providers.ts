@@ -86,13 +86,16 @@ const google = customProvider({
 const deepseek = customProvider({
   languageModels: {
     "deepseek-chat": originalDeepseek("deepseek-chat"),
-    "deepseek-reasoner": originalDeepseek("deepseek-reasoner")
+    "deepseek-reasoner": originalDeepseek("deepseek-reasoner"),
   },
   fallbackProvider: originalDeepseek,
 });
 
 const ollama = customProvider({
-  languageModels: { "llama3.1": createOllama()("llama3.1") },
+  languageModels: {
+    "llama3.1": createOllama()("llama3.1"),
+    "deepseek-r1:1.5b": createOllama()("deepseek-r1:1.5b"),
+  },
   fallbackProvider: createOllama(),
 });
 
@@ -128,6 +131,7 @@ export const Models = [
   "openrouter:deepseek-v3",
   "openrouter:deepseek-r1",
   "ollama:llama3.1",
+  "ollama:deepseek-r1:1.5b",
 ] as const;
 
 export type ModelName = (typeof Models)[number];
