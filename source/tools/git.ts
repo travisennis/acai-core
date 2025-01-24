@@ -40,7 +40,7 @@ const validateGitRepo = (workingDir: string): void => {
   }
 };
 
-function sanitizePath(userPath: string, workingDir: string): string {
+function sanitizePath(workingDir: string, userPath: string): string {
   const normalizedPath = path.isAbsolute(userPath)
     ? path.normalize(userPath)
     : path.normalize(path.join(workingDir, userPath));
