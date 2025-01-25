@@ -1,6 +1,6 @@
 {
   "name": "@travisennis/acai-core",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "The core SDK for acai. Used by acai-ts, acai-web, and acai-language-server.",
   "type": "module",
   "exports": {
