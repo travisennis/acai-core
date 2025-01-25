@@ -3,13 +3,13 @@ import {
   anthropic as originalAnthropic,
 } from "@ai-sdk/anthropic";
 import { createAzure } from "@ai-sdk/azure";
+import { deepseek as originalDeepseek } from "@ai-sdk/deepseek";
 import { google as originalGoogle } from "@ai-sdk/google";
 import { createOpenAI, openai as originalOpenAI } from "@ai-sdk/openai";
 import {
   experimental_createProviderRegistry as createProviderRegistry,
   experimental_customProvider as customProvider,
 } from "ai";
-import { deepseek as originalDeepseek } from "@ai-sdk/deepseek";
 import { createOllama } from "ollama-ai-provider";
 
 const azure = customProvider({
@@ -78,7 +78,8 @@ const google = customProvider({
     "flash2-search": originalGoogle("gemini-2.0-flash-exp", {
       useSearchGrounding: true,
     }),
-    flash2thinking: originalGoogle("gemini-2.0-flash-thinking-exp-1219"),
+    flash2thinking: originalGoogle("gemini-2.0-flash-thinking-exp-01-21"),
+    "gemini-experimental": originalGoogle("gemini-exp-1206"),
   },
   fallbackProvider: originalGoogle,
 });
@@ -124,6 +125,7 @@ export const Models = [
   "google:flash2",
   "google:flash2-search",
   "google:flash2thinking",
+  "google:gemini-experimental",
   "deepseek:deepseek-chat",
   "deepseek:deepseek-reasoner",
   "openrouter:llama-3-70-b",
@@ -137,7 +139,15 @@ export const Models = [
 export type ModelName = (typeof Models)[number];
 
 export function isSupportedModel(model: unknown): model is ModelName {
-  return Models.includes(model as ModelName);
+  return (
+    Models.includes(model as ModelName) ||
+    (isString(model) &&
+      (model.startsWith("openrouter:") || model.startsWith("ollama:")))
+  );
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }
 
 export function languageModel(input: ModelName) {
