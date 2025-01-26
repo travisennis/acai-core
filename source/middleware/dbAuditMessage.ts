@@ -12,7 +12,7 @@ const initializeDatabase = (dbPath: string): Database.Database => {
     CREATE TABLE IF NOT EXISTS model_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       model TEXT NOT NULL,
-      prompt TEXT NOT NULL,
+      prompt JSON NOT NULL,
       response TEXT NOT NULL,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -23,19 +23,36 @@ const initializeDatabase = (dbPath: string): Database.Database => {
 
 export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
   let db: Database.Database;
+  let insertStmt: Database.Statement;
 
   try {
     db = initializeDatabase(dbPath);
+    // Prepare statement once during initialization
+    insertStmt = db.prepare(
+      "INSERT INTO model_messages (model, prompt, response) VALUES (?, json(?), ?)"
+    );
+
+    // Setup cleanup on process exit
+    process.on('exit', () => {
+      try {
+        db.close();
+      } catch (error) {
+        console.error("Error closing database:", error);
+      }
+    });
   } catch (error) {
     console.error("Error initializing database:", error);
     throw error;
   }
 
-  const insertMessage = (model: string, prompt: string, response: string) => {
-    const stmt = db.prepare(
-      "INSERT INTO model_messages (model, prompt, response) VALUES (?, ?, ?)",
-    );
-    stmt.run(model, prompt, response);
+  const insertMessage = (model: string, prompt: unknown, response: string) => {
+    try {
+      // No need to stringify prompt - let SQLite handle it
+      insertStmt.run(model, JSON.stringify(prompt), response);
+    } catch (error) {
+      console.error("Error inserting message:", error);
+      throw error;
+    }
   };
 
   const middleware: LanguageModelV1Middleware = {
@@ -45,7 +62,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
 
         insertMessage(
           model.provider,
-          JSON.stringify(params.prompt),
+          params.prompt,  // Pass the raw prompt object
           result.text ?? "",
         );
 
@@ -77,7 +94,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
           try {
             insertMessage(
               model.provider,
-              JSON.stringify(params.prompt),
+              params.prompt,  // Pass the raw prompt object
               generatedText,
             );
           } catch (error) {
