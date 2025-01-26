@@ -29,11 +29,11 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
     db = initializeDatabase(dbPath);
     // Prepare statement once during initialization
     insertStmt = db.prepare(
-      "INSERT INTO model_messages (model, prompt, response) VALUES (?, json(?), ?)"
+      "INSERT INTO model_messages (model, prompt, response) VALUES (?, json(?), ?)",
     );
 
     // Setup cleanup on process exit
-    process.on('exit', () => {
+    process.on("exit", () => {
       try {
         db.close();
       } catch (error) {
@@ -62,7 +62,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
 
         insertMessage(
           model.provider,
-          params.prompt,  // Pass the raw prompt object
+          params.prompt, // Pass the raw prompt object
           result.text ?? "",
         );
 
@@ -94,7 +94,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
           try {
             insertMessage(
               model.provider,
-              params.prompt,  // Pass the raw prompt object
+              params.prompt, // Pass the raw prompt object
               generatedText,
             );
           } catch (error) {
