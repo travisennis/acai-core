@@ -65,11 +65,12 @@ const appendToFile = async (
 
 export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
   const middleware: LanguageModelV1Middleware = {
-    wrapGenerate: async ({ doGenerate, params }) => {
+    wrapGenerate: async ({ doGenerate, params, model }) => {
       try {
         const result = await doGenerate();
 
         const msg = {
+          model: model.provider,
           prompt: params.prompt,
           response: result.text,
         };
@@ -83,7 +84,7 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
       }
     },
 
-    wrapStream: async ({ doStream, params }) => {
+    wrapStream: async ({ doStream, params, model }) => {
       const { stream, ...rest } = await doStream();
 
       let generatedText = "";
@@ -103,6 +104,7 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
         async flush() {
           try {
             const msg = {
+              model: model.provider,
               prompt: params.prompt,
               response: generatedText,
             };
