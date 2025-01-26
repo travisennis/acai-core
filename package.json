@@ -63,11 +63,13 @@
     "@ai-sdk/google": "^1.x",
     "@ai-sdk/openai": "^1.x",
     "ai": "^4.x",
-    "ollama-ai-provider": "^1.2.0",
+    "better-sqlite3": "^11.x",
+    "ollama-ai-provider": "^1.x",
     "zod": "^3.x"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/diff": "^7.0.0",
     "@types/node": "^22.10.5",
     "tsx": "^4.19.2",
