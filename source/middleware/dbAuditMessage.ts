@@ -7,6 +7,8 @@ import type {
 const initializeDatabase = (dbPath: string): Database.Database => {
   const db = new Database(dbPath);
 
+  db.pragma("journal_mode = WAL");
+
   // Create the messages table if it doesn't exist
   db.exec(`
     CREATE TABLE IF NOT EXISTS model_messages (
