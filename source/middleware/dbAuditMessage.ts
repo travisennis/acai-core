@@ -1,8 +1,8 @@
-import Database from "better-sqlite3";
 import type {
   Experimental_LanguageModelV1Middleware as LanguageModelV1Middleware,
   LanguageModelV1StreamPart,
 } from "ai";
+import Database from "better-sqlite3";
 
 const initializeDatabase = (dbPath: string): Database.Database => {
   const db = new Database(dbPath);
@@ -59,6 +59,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
 
   const middleware: LanguageModelV1Middleware = {
     wrapGenerate: async ({ doGenerate, params, model }) => {
+      console.info("db audit message middleware");
       try {
         const result = await doGenerate();
 
