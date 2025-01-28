@@ -183,7 +183,7 @@ export class MessageStorage {
         endDate.toISOString(),
         pageSize,
         offset,
-      ) as any[];
+      );
 
       const { count } = this.db
         .prepare(
@@ -193,16 +193,19 @@ export class MessageStorage {
         count: number;
       };
 
-      return {
-        data: rows.map((row) => ({
-          ...row,
-          prompt: JSON.parse(row.prompt),
-        })),
-        total: count,
-        page,
-        pageSize,
-        totalPages: Math.ceil(count / pageSize),
-      };
+      if (Array.isArray(rows) && rows.every(isModelMessage)) {
+        return {
+          data: rows.map((row) => ({
+            ...row,
+            prompt: JSON.parse(row.prompt),
+          })),
+          total: count,
+          page,
+          pageSize,
+          totalPages: Math.ceil(count / pageSize),
+        };
+      }
+      throw new Error("Invalid ModelMessages");
     } catch (error) {
       console.error("Error getting messages by date range:", error);
       throw error;
@@ -228,7 +231,11 @@ export class MessageStorage {
            ORDER BY timestamp DESC 
            LIMIT ? OFFSET ?`,
         )
-        .all(`%${query}%`, pageSize, offset) as any[];
+        .all(`%${query}%`, pageSize, offset);
+
+      if (!(Array.isArray(rows) && rows.every(isModelMessage))) {
+        throw new Error("Invalid ModelMessages");
+      }
 
       const { count } = this.db
         .prepare(
