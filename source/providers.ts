@@ -66,6 +66,7 @@ const openai = customProvider({
     }),
     o1: originalOpenAI("o1-preview"),
     "o1-mini": originalOpenAI("o1-mini"),
+    "o3-mini": originalOpenAI("o3-mini"),
   },
   fallbackProvider: originalOpenAI,
 });
@@ -120,6 +121,7 @@ export const Models = [
   "openai:gpt-4o-mini-structured",
   "openai:o1",
   "openai:o1-mini",
+  "openai:o3-mini",
   "google:pro",
   "google:flash",
   "google:flash2",
@@ -142,7 +144,12 @@ export function isSupportedModel(model: unknown): model is ModelName {
   return (
     Models.includes(model as ModelName) ||
     (isString(model) &&
-      (model.startsWith("openrouter:") || model.startsWith("ollama:")))
+      (model.startsWith("openrouter:") ||
+        model.startsWith("ollama:") ||
+        model.startsWith("anthropic:") ||
+        model.startsWith("openai:") ||
+        model.startsWith("google:") ||
+        model.startsWith("deepseek:")))
   );
 }
 
