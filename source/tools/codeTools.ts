@@ -57,11 +57,12 @@ function asyncExec(command: string, cwd: string): Promise<string> {
   const { promise, resolve, reject } = Promise.withResolvers<string>();
   exec(command, { cwd }, (error, stdout, stderr) => {
     if (error) {
-      reject(`Command ${command} execution error: ${error.message}`);
+      resolve(`Command ${command} execution: ${error.message}`);
       return;
     }
     if (stderr) {
       console.error(`Command ${command} stderr: ${stderr}`);
+      reject(stderr);
     }
     resolve(stdout);
   });
