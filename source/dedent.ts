@@ -5,7 +5,7 @@ export type Dedent = (
 
 const spaces = /^(\s+)\S+/;
 
-const dedent: Dedent = (
+export const dedent: Dedent = (
   strings: TemplateStringsArray,
   ...values: unknown[]
 ): string => {
@@ -52,5 +52,3 @@ const dedent: Dedent = (
 
   return result;
 };
-
-export default dedent;
