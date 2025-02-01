@@ -20,7 +20,7 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
     }),
     lintCode: tool({
       description:
-        "Lints the current code base and returns the results. This function helps identify and report potential issues, style violations, or errors in the code, improving code quality and consistency.",
+        "Lints the current code base and returns the results. This tool helps identify and report potential issues, style violations, or errors in the code, improving code quality and consistency.",
       parameters: z.object({}),
       execute: async () => {
         const config = await readProjectConfig();
@@ -34,7 +34,7 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
     }),
     formatCode: tool({
       description:
-        "Executes the 'format' command on the current code base and returns the results.",
+        "Executes the 'format' command on the current code base and returns the results. This reports style and formatting issues with the code base",
       parameters: z.object({}),
       execute: async () => {
         const config = await readProjectConfig();
