@@ -1,5 +1,5 @@
 import { type LanguageModel, generateText } from "ai";
-import dedent from "../dedent.ts";
+import { dedent } from "../dedent.ts";
 
 export class PVG {
   private model: LanguageModel;
