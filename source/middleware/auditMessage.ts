@@ -71,7 +71,7 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
         const result = await doGenerate();
 
         const msg = {
-          model: model.provider,
+          model: model.modelId,
           prompt: params.prompt,
           response: result.text,
         };
@@ -105,7 +105,7 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
         async flush() {
           try {
             const msg = {
-              model: model.provider,
+              model: model.modelId,
               prompt: params.prompt,
               response: generatedText,
             };
