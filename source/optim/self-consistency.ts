@@ -2,12 +2,15 @@ import { type LanguageModel, generateText } from "ai";
 
 class AdvancedSelfConsistency {
   selfConsistencyCompletionTokens = 0;
+  private model: LanguageModel;
+  private numSamples: number;
+  private similarityThreshold: number;
 
-  constructor(
-    private model: LanguageModel,
-    private numSamples = 5,
-    private similarityThreshold = 0.8,
-  ) {}
+  constructor(model: LanguageModel, numSamples = 5, similarityThreshold = 0.8) {
+    this.model = model;
+    this.numSamples = numSamples;
+    this.similarityThreshold = similarityThreshold;
+  }
 
   private async generateResponses(
     systemPrompt: string | undefined,

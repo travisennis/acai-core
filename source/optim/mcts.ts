@@ -153,13 +153,23 @@ class MCTSNode {
 class MCTS {
   private readonly transpositionTable: Map<string, MCTSNode>;
   private readonly actionPriors: Map<string, number>;
+  private readonly model: LanguageModel;
+  private readonly simulationDepth: number;
+  private readonly numSimulations: number;
+  private readonly options: {
+    maxDepth: number;
+    maxChildren: number;
+    explorationConstant: number;
+    temperature: number;
+    useRAVE: boolean;
+  };
   completionTokens: number;
 
   constructor(
-    private readonly model: LanguageModel,
-    private readonly simulationDepth: number,
-    private readonly numSimulations: number,
-    private readonly options: {
+    model: LanguageModel,
+    simulationDepth: number,
+    numSimulations: number,
+    options: {
       maxDepth: number;
       maxChildren: number;
       explorationConstant: number;
@@ -167,11 +177,14 @@ class MCTS {
       useRAVE: boolean;
     },
   ) {
+    this.model = model;
+    this.simulationDepth = simulationDepth;
+    this.numSimulations = numSimulations;
+    this.options = options;
     this.completionTokens = 0;
     this.transpositionTable = new Map();
     this.actionPriors = new Map();
   }
-
   async findBestResponse(initialState: DialogueState): Promise<string> {
     const root = new MCTSNode(initialState);
     this.transpositionTable.set(root.state.hash(), root);

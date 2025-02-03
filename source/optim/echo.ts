@@ -6,12 +6,14 @@ import {
 } from "ai";
 
 class ECHOImplementation {
+  private model: LanguageModel;
+  private embeddingModel: EmbeddingModel<string>;
   tokens = 0;
 
-  constructor(
-    private model: LanguageModel,
-    private embeddingModel: EmbeddingModel<string>,
-  ) {}
+  constructor(model: LanguageModel, embeddingModel: EmbeddingModel<string>) {
+    this.model = model;
+    this.embeddingModel = embeddingModel;
+  }
 
   // Step 1: Question Clustering
   async clusterQuestions(questions: string[], numClusters: number) {
