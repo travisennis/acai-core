@@ -1,4 +1,5 @@
 import type {
+  CoreMessage,
   Experimental_LanguageModelV1Middleware as LanguageModelV1Middleware,
   LanguageModelV1StreamPart,
 } from "ai";
@@ -11,15 +12,14 @@ const initializeDatabase = (dbPath: string): Database.Database => {
 
   // Create the messages table if it doesn't exist
   db.exec(`
-    CREATE TABLE IF NOT EXISTS model_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      model TEXT NOT NULL,
-      prompt JSON NOT NULL,
-      response TEXT NOT NULL,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
+  CREATE TABLE IF NOT EXISTS model_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model TEXT NOT NULL,
+    messages JSON NOT NULL,
+    duration INTEGER NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
   return db;
 };
 
@@ -31,7 +31,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
     db = initializeDatabase(dbPath);
     // Prepare statement once during initialization
     insertStmt = db.prepare(
-      "INSERT INTO model_messages (model, prompt, response) VALUES (?, json(?), ?)",
+      "INSERT INTO model_messages (model, messages, duration) VALUES (?, json(?), ?)",
     );
 
     // Setup cleanup on process exit
@@ -47,10 +47,16 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
     throw error;
   }
 
-  const insertMessage = (model: string, prompt: unknown, response: string) => {
+  const insertMessage = (
+    model: string,
+    prompt: unknown,
+    response: string,
+    duration: number,
+  ) => {
     try {
+      (prompt as CoreMessage[]).push({ role: "assistant", content: response });
       // No need to stringify prompt - let SQLite handle it
-      insertStmt.run(model, JSON.stringify(prompt), response);
+      insertStmt.run(model, JSON.stringify(prompt), duration);
     } catch (error) {
       console.error("Error inserting message:", error);
       throw error;
@@ -61,12 +67,14 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
     wrapGenerate: async ({ doGenerate, params, model }) => {
       console.info("db audit message middleware");
       try {
+        const startTime = performance.now();
         const result = await doGenerate();
 
         insertMessage(
-          model.provider,
+          model.modelId,
           params.prompt, // Pass the raw prompt object
           result.text ?? "",
+          performance.now() - startTime,
         );
 
         return result;
@@ -77,6 +85,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
     },
 
     wrapStream: async ({ doStream, params, model }) => {
+      const startTime = performance.now();
       const { stream, ...rest } = await doStream();
 
       let generatedText = "";
@@ -96,9 +105,10 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
         flush() {
           try {
             insertMessage(
-              model.provider,
+              model.modelId,
               params.prompt, // Pass the raw prompt object
               generatedText,
+              performance.now() - startTime,
             );
           } catch (error) {
             console.error("Error in transform stream flush:", error);
