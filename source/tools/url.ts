@@ -17,6 +17,21 @@ export const createUrlTools = () => {
 };
 
 export async function loadUrl(url: string): Promise<string> {
+  const apiKey = process.env.JINA_READER_API_KEY;
+  const readUrl = `https://r.jina.ai/${url}`;
+  const response = await fetch(readUrl, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+
+  if (response.ok) {
+    const data = await response.text();
+    return data;
+  }
+
+  console.info("Falling back to fetch.");
   try {
     const response = await fetch(url);
     if (!response.ok) {
