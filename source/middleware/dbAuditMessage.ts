@@ -29,6 +29,7 @@ export const dbAuditMessage = ({ dbPath }: { dbPath: string }) => {
 
   try {
     db = initializeDatabase(dbPath);
+
     // Prepare statement once during initialization
     insertStmt = db.prepare(
       "INSERT INTO model_messages (model, messages, duration) VALUES (?, json(?), ?)",
