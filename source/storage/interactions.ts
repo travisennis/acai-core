@@ -1,6 +1,11 @@
 import type { CoreMessage } from "ai";
 import Database from "better-sqlite3";
 
+export interface ValidationError extends Error {
+  field: string;
+  value: any;
+}
+
 export interface Interaction {
   id: number;
   model: string;
@@ -54,6 +59,20 @@ export interface PaginatedResult<T> {
 }
 
 const createTable = `
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version INTEGER PRIMARY KEY,
+  applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Enable full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS interactions_fts USING fts5(
+  messages,
+  content='interactions',
+  content_rowid='id'
+);
+
 CREATE TABLE IF NOT EXISTS interactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   model TEXT NOT NULL,
@@ -71,6 +90,11 @@ CREATE INDEX IF NOT EXISTS idx_interactions_timestamp ON interactions(timestamp)
 CREATE INDEX IF NOT EXISTS idx_interactions_model_timestamp ON interactions(model, timestamp)`;
 
 export class InteractionStorage {
+  private static readonly TEMPERATURE_MIN = 0;
+  private static readonly TEMPERATURE_MAX = 2;
+  private static readonly MAX_TOKENS_MIN = 1;
+  private static readonly MAX_TOKENS_MAX = 32000;
+
   private db: Database.Database;
   private insertStmt: Database.Statement;
   private getByIdStmt: Database.Statement;
@@ -87,48 +111,62 @@ export class InteractionStorage {
     this.db = new Database(dbPath);
     this.db.pragma("journal_mode = WAL");
 
-    // Create the messages table if it doesn't exist
+    // Create the messages table and other required tables
     this.db.exec(createTable);
 
+    // Initialize schema migrations
+    try {
+      this.migrateSchema();
+    } catch (error) {
+      console.error("Failed to run schema migrations:", error);
+    }
+
+    // Create trigger for FTS table
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS interactions_ai AFTER INSERT ON interactions BEGIN
+        INSERT INTO interactions_fts(rowid, messages) VALUES (new.id, new.messages);
+      END;
+    `);
+
     this.insertStmt = this.db.prepare(
-      "INSERT INTO interactions (model, temperature, maxTokens, messages, duration, promptTokens, completionTokens) VALUES (?, ?, ?, json(?), ?, ?, ?)"
+      "INSERT INTO interactions (model, temperature, maxTokens, messages, duration, promptTokens, completionTokens) VALUES (?, ?, ?, json(?), ?, ?, ?)",
     );
 
     // Prepare statements for better performance
     this.getByIdStmt = this.db.prepare(
-      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE id = ?"
+      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE id = ?",
     );
 
     this.getAllStmt = this.db.prepare(
-      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions ORDER BY timestamp DESC LIMIT ? OFFSET ?",
     );
 
     this.getCountStmt = this.db.prepare(
-      "SELECT COUNT(*) as count FROM interactions"
+      "SELECT COUNT(*) as count FROM interactions",
     );
 
     this.getByModelStmt = this.db.prepare(
-      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE model = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE model = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?",
     );
 
     this.getByDateRangeStmt = this.db.prepare(
-      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC LIMIT ? OFFSET ?",
     );
 
     this.getModelCountStmt = this.db.prepare(
-      "SELECT COUNT(*) as count FROM interactions WHERE model = ?"
+      "SELECT COUNT(*) as count FROM interactions WHERE model = ?",
     );
 
     this.getDateRangeCountStmt = this.db.prepare(
-      "SELECT COUNT(*) as count FROM interactions WHERE timestamp BETWEEN ? AND ?"
+      "SELECT COUNT(*) as count FROM interactions WHERE timestamp BETWEEN ? AND ?",
     );
 
     this.searchStmt = this.db.prepare(
-      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE messages LIKE ? ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+      "SELECT id, model, temperature, maxTokens, messages, duration, promptTokens, completionTokens, datetime(timestamp, 'localtime') as timestamp FROM interactions WHERE messages LIKE ? ORDER BY timestamp DESC LIMIT ? OFFSET ?",
     );
 
     this.searchCountStmt = this.db.prepare(
-      "SELECT COUNT(*) as count FROM interactions WHERE messages LIKE ?"
+      "SELECT COUNT(*) as count FROM interactions WHERE messages LIKE ?",
     );
 
     // Setup cleanup on process exit
@@ -151,9 +189,19 @@ export class InteractionStorage {
     messages: CoreMessage[],
     duration: number,
     promptTokens: number,
-    completionTokens: number
+    completionTokens: number,
   ) {
     try {
+      // Validate input parameters
+      this.validateInput(temperature, maxTokens);
+
+      if (!model || typeof model !== "string") {
+        throw new Error("Model must be a non-empty string");
+      }
+
+      if (!Array.isArray(messages) || messages.length === 0) {
+        throw new Error("Messages must be a non-empty array");
+      }
       this.insertStmt.run(
         model,
         temperature,
@@ -161,7 +209,7 @@ export class InteractionStorage {
         JSON.stringify(messages),
         duration,
         promptTokens,
-        completionTokens
+        completionTokens,
       );
     } catch (error) {
       console.error("Error inserting interaction:", error);
@@ -274,7 +322,7 @@ export class InteractionStorage {
 
       const { count } = this.getDateRangeCountStmt.get(
         startDate.toISOString(),
-        endDate.toISOString()
+        endDate.toISOString(),
       ) as { count: number };
 
       if (Array.isArray(rows) && rows.every(isStoredInteraction)) {
@@ -313,7 +361,9 @@ export class InteractionStorage {
         throw new Error("Invalid Interactions");
       }
 
-      const { count } = this.searchCountStmt.get(`%${query}%`) as { count: number };
+      const { count } = this.searchCountStmt.get(`%${query}%`) as {
+        count: number;
+      };
 
       return {
         data: rows.map((row) => ({
@@ -394,9 +444,261 @@ export class InteractionStorage {
   }
 
   /**
+   * Performs database maintenance tasks
+   */
+  maintenance(): void {
+    try {
+      // Vacuum the database to reclaim space and optimize
+      this.db.exec("VACUUM");
+
+      // Analyze tables for query optimization
+      this.db.exec("ANALYZE");
+
+      // Reindex for better query performance
+      this.db.exec("REINDEX");
+    } catch (error) {
+      console.error("Error during maintenance:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a backup of the database
+   */
+  async backup(backupPath: string): Promise<void> {
+    try {
+      await this.db.backup(backupPath);
+    } catch (error) {
+      console.error("Error creating backup:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Close the database connection
    */
   close() {
     this.db.close();
+  }
+
+  private validateInput(temperature: number, maxTokens: number): void {
+    const errors: ValidationError[] = [];
+
+    if (
+      temperature < InteractionStorage.TEMPERATURE_MIN ||
+      temperature > InteractionStorage.TEMPERATURE_MAX
+    ) {
+      const error = new Error(
+        `Temperature must be between ${InteractionStorage.TEMPERATURE_MIN} and ${InteractionStorage.TEMPERATURE_MAX}`,
+      ) as ValidationError;
+      error.field = "temperature";
+      error.value = temperature;
+      errors.push(error);
+    }
+
+    if (
+      maxTokens < InteractionStorage.MAX_TOKENS_MIN ||
+      maxTokens > InteractionStorage.MAX_TOKENS_MAX
+    ) {
+      const error = new Error(
+        `MaxTokens must be between ${InteractionStorage.MAX_TOKENS_MIN} and ${InteractionStorage.MAX_TOKENS_MAX}`,
+      ) as ValidationError;
+      error.field = "maxTokens";
+      error.value = maxTokens;
+      errors.push(error);
+    }
+
+    if (errors.length > 0) {
+      throw new AggregateError(errors, "Input validation failed");
+    }
+  }
+
+  /**
+   * Performs batch insert of multiple interactions
+   */
+  batchInsertInteractions(
+    interactions: {
+      model: string;
+      temperature: number;
+      maxTokens: number;
+      messages: CoreMessage[];
+      duration: number;
+      promptTokens: number;
+      completionTokens: number;
+    }[],
+  ): void {
+    const transaction = this.db.transaction((items) => {
+      for (const item of items) {
+        this.validateInput(item.temperature, item.maxTokens);
+        this.insertStmt.run(
+          item.model,
+          item.temperature,
+          item.maxTokens,
+          JSON.stringify(item.messages),
+          item.duration,
+          item.promptTokens,
+          item.completionTokens,
+        );
+      }
+    });
+
+    try {
+      transaction(interactions);
+    } catch (error) {
+      console.error("Error in batch insert:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Performs schema migrations if needed
+   */
+  private migrateSchema(): void {
+    const migrations = [
+      {
+        version: 1,
+        up: `
+          -- Add any future schema changes here
+          -- Example:
+          -- ALTER TABLE interactions ADD COLUMN new_column TEXT;
+        `,
+      },
+    ];
+
+    try {
+      const currentVersion = this.db
+        .prepare("SELECT MAX(version) as version FROM schema_migrations")
+        .get() as { version: number | null };
+
+      const startVersion = (currentVersion?.version || 0) + 1;
+
+      for (const migration of migrations) {
+        if (migration.version >= startVersion) {
+          this.db.exec(migration.up);
+          this.db
+            .prepare("INSERT INTO schema_migrations (version) VALUES (?)")
+            .run(migration.version);
+        }
+      }
+    } catch (error) {
+      console.error("Error during schema migration:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get interactions with advanced filtering and sorting options
+   */
+  getInteractionsAdvanced(params: {
+    pagination: PaginationParams;
+    sortBy?: "timestamp" | "duration" | "promptTokens" | "completionTokens";
+    sortOrder?: "ASC" | "DESC";
+    filters?: {
+      model?: string;
+      minTemperature?: number;
+      maxTemperature?: number;
+      minTokens?: number;
+      maxTokens?: number;
+      dateRange?: { start: Date; end: Date };
+    };
+    searchText?: string;
+  }): PaginatedResult<Interaction> {
+    try {
+      const {
+        pagination,
+        sortBy = "timestamp",
+        sortOrder = "DESC",
+        filters,
+        searchText,
+      } = params;
+      const { page = 1, pageSize = 10 } = pagination;
+      const offset = (page - 1) * pageSize;
+
+      let query = "SELECT i.* FROM interactions i";
+      let countQuery = "SELECT COUNT(*) as count FROM interactions i";
+      const queryParams: any[] = [];
+
+      // Add full-text search if specified
+      if (searchText) {
+        query = `${query} JOIN interactions_fts fts ON i.id = fts.rowid`;
+        countQuery = `${countQuery} JOIN interactions_fts fts ON i.id = fts.rowid`;
+        query += " WHERE fts.messages MATCH ?";
+        countQuery += " WHERE fts.messages MATCH ?";
+        queryParams.push(searchText);
+      }
+
+      // Add filters
+      if (filters) {
+        const whereConditions: string[] = [];
+
+        if (filters.model) {
+          whereConditions.push("model = ?");
+          queryParams.push(filters.model);
+        }
+
+        if (filters.minTemperature !== undefined) {
+          whereConditions.push("temperature >= ?");
+          queryParams.push(filters.minTemperature);
+        }
+
+        if (filters.maxTemperature !== undefined) {
+          whereConditions.push("temperature <= ?");
+          queryParams.push(filters.maxTemperature);
+        }
+
+        if (filters.minTokens !== undefined) {
+          whereConditions.push("maxTokens >= ?");
+          queryParams.push(filters.minTokens);
+        }
+
+        if (filters.maxTokens !== undefined) {
+          whereConditions.push("maxTokens <= ?");
+          queryParams.push(filters.maxTokens);
+        }
+
+        if (filters.dateRange) {
+          whereConditions.push("timestamp BETWEEN ? AND ?");
+          queryParams.push(filters.dateRange.start.toISOString());
+          queryParams.push(filters.dateRange.end.toISOString());
+        }
+
+        if (whereConditions.length > 0) {
+          const whereClause = whereConditions.join(" AND ");
+          query += searchText ? ` AND ${whereClause}` : ` WHERE ${whereClause}`;
+          countQuery += searchText
+            ? ` AND ${whereClause}`
+            : ` WHERE ${whereClause}`;
+        }
+      }
+
+      // Add sorting
+      query += ` ORDER BY ${sortBy} ${sortOrder}`;
+
+      // Add pagination
+      query += " LIMIT ? OFFSET ?";
+      const fullQueryParams = [...queryParams, pageSize, offset];
+
+      const rows = this.db.prepare(query).all(...fullQueryParams);
+      const { count } = this.db.prepare(countQuery).get(...queryParams) as {
+        count: number;
+      };
+
+      if (Array.isArray(rows) && rows.every(isStoredInteraction)) {
+        return {
+          data: rows.map((row) => ({
+            ...row,
+            messages: JSON.parse(row.messages),
+          })),
+          total: count,
+          page,
+          pageSize,
+          totalPages: Math.ceil(count / pageSize),
+        };
+      }
+      throw new Error("Invalid Interactions");
+    } catch (error) {
+      console.error("Error getting interactions with advanced options:", error);
+      throw error;
+    }
   }
 }
