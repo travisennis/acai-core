@@ -1,9 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type {
-  Experimental_LanguageModelV1Middleware as LanguageModelV1Middleware,
-  LanguageModelV1StreamPart,
-} from "ai";
+import type { LanguageModelV1Middleware, LanguageModelV1StreamPart } from "ai";
 
 const checkAndRolloverFile = async (filePath: string): Promise<void> => {
   try {
