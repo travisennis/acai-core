@@ -10,9 +10,9 @@ import { z } from "zod";
 
 export const createWebSearchTools = ({ model }: { model: LanguageModel }) => {
   return {
-    searchGoogle: tool({
+    searchLinks: tool({
       description:
-        "Searches the web using Google. The query should be a set of search terms.",
+        "Searches the web and returns search results. The query should be a set of search terms.",
       parameters: z.object({
         query: z.string().describe("The search query."),
       }),
@@ -23,7 +23,7 @@ export const createWebSearchTools = ({ model }: { model: LanguageModel }) => {
             api_key: process.env.SERPAPI_API_KEY,
             q: query,
           });
-          return JSON.stringify(response.organic_results);
+          return formatSearchResults(response.organic_results);
         } catch (error) {
           return `Error fetching search results: ${error}`;
         }
@@ -31,7 +31,7 @@ export const createWebSearchTools = ({ model }: { model: LanguageModel }) => {
     }),
     webSearch: tool({
       description:
-        "Searches the web and returns an answer. The query should be formulated as a natural language question.",
+        "Searches the web and returns an answer with citations. The query should be formulated as a natural language question.",
       parameters: z.object({
         query: z.string().describe("The search query."),
       }),
@@ -92,4 +92,45 @@ function parseMetadata(
   return {
     sources,
   };
+}
+
+interface Sitelink {
+  title: string;
+  link: string;
+}
+
+interface ResultItem {
+  position: number;
+  title: string;
+  link: string;
+  redirect_link: string;
+  displayed_link: string;
+  favicon: string;
+  snippet: string;
+  snippet_highlighted_words: string[];
+  sitelinks?: {
+    inline?: Sitelink[];
+    list?: Sitelink[];
+  };
+  source: string;
+  date?: string;
+}
+
+function formatSearchResults(jsonData: ResultItem[]): string {
+  try {
+    let output = "";
+
+    for (const item of jsonData) {
+      output += `Title: ${item.title}\n`;
+      output += `Source: ${item.source}\n`;
+      output += `Link: ${item.link}\n`;
+      output += `Snippet: ${item.snippet}\n`;
+      output += "\n"; // Add a newline between results
+    }
+
+    return output;
+  } catch (error) {
+    console.error("Error parsing JSON:", error);
+    return "Error: Could not parse JSON data.";
+  }
 }
