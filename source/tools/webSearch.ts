@@ -1,52 +1,44 @@
 import type { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google";
-import { type ProviderMetadata, generateText, tool } from "ai";
-// import { getJson } from "serpapi";
+import {
+  type LanguageModel,
+  type ProviderMetadata,
+  generateText,
+  tool,
+} from "ai";
+import { getJson } from "serpapi";
 import { z } from "zod";
-import { auditMessage, log, usage } from "../middleware/index.ts";
-import { type ModelName, languageModel } from "../providers.ts";
-import { wrapLanguageModel } from "../wrapLanguageModel.ts";
 
-export const createWebSearchTools = ({
-  model = "google:flash2-search",
-  auditPath,
-}: { model?: ModelName; auditPath: string }) => {
+export const createWebSearchTools = ({ model }: { model: LanguageModel }) => {
   return {
-    // searchGoogle: tool({
-    //   description: "Searches the web using Google.",
-    //   parameters: z.object({
-    //     query: z.string().describe("The search query."),
-    //   }),
-    //   execute: async ({ query }) => {
-    //     try {
-    //       const response = await getJson({
-    //         engine: "google",
-    //         api_key: process.env.SERPAPI_API_KEY,
-    //         q: query,
-    //       });
-    //       return JSON.stringify(response.organic_results);
-    //     } catch (error) {
-    //       return `Error fetching search results: ${error}`;
-    //     }
-    //   },
-    // }),
+    searchGoogle: tool({
+      description:
+        "Searches the web using Google. The query should be a set of search terms.",
+      parameters: z.object({
+        query: z.string().describe("The search query."),
+      }),
+      execute: async ({ query }) => {
+        try {
+          const response = await getJson({
+            engine: "google",
+            api_key: process.env.SERPAPI_API_KEY,
+            q: query,
+          });
+          return JSON.stringify(response.organic_results);
+        } catch (error) {
+          return `Error fetching search results: ${error}`;
+        }
+      },
+    }),
     webSearch: tool({
       description:
-        "Searches the web and returns an answer. The query can be a question or set of search terms.",
+        "Searches the web and returns an answer. The query should be formulated as a natural language question.",
       parameters: z.object({
-        query: z
-          .string()
-          .describe("A query or set of query terms to search for."),
+        query: z.string().describe("The search query."),
       }),
       execute: async ({ query }) => {
         const { text, experimental_providerMetadata } = await generateText({
-          model: wrapLanguageModel(
-            languageModel(model),
-            log,
-            usage,
-            auditMessage({ path: auditPath }),
-          ),
-          temperature: 0.3,
-          maxTokens: 8192,
+          model: model,
+          temperature: 1.0,
           prompt: query,
         });
         const metadata = parseMetadata(experimental_providerMetadata);
