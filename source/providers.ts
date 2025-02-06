@@ -8,7 +8,7 @@ import { google as originalGoogle } from "@ai-sdk/google";
 import { createOpenAI, openai as originalOpenAI } from "@ai-sdk/openai";
 import {
   experimental_createProviderRegistry as createProviderRegistry,
-  experimental_customProvider as customProvider,
+  customProvider,
 } from "ai";
 import { createOllama } from "ollama-ai-provider";
 
@@ -75,12 +75,14 @@ const google = customProvider({
   languageModels: {
     pro: originalGoogle("gemini-1.5-pro-latest"),
     flash: originalGoogle("gemini-1.5-flash-latest"),
-    flash2: originalGoogle("gemini-2.0-flash-exp"),
-    "flash2-search": originalGoogle("gemini-2.0-flash-exp", {
+    flash2: originalGoogle("gemini-2.0-flash"),
+    "flash2-search": originalGoogle("gemini-2.0-flash", {
       useSearchGrounding: true,
     }),
+    flash2lite: originalGoogle("gemini-2.0-flash-lite-preview-02-05"),
     flash2thinking: originalGoogle("gemini-2.0-flash-thinking-exp-01-21"),
     "gemini-experimental": originalGoogle("gemini-exp-1206"),
+    pro2: originalGoogle("gemini-2.0-pro-exp-02-05"),
   },
   fallbackProvider: originalGoogle,
 });
@@ -125,8 +127,10 @@ export const Models = [
   "google:pro",
   "google:flash",
   "google:flash2",
+  "google:flash2lite",
   "google:flash2-search",
   "google:flash2thinking",
+  "google:pro2",
   "google:gemini-experimental",
   "deepseek:deepseek-chat",
   "deepseek:deepseek-reasoner",
