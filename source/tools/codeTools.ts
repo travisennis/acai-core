@@ -54,14 +54,15 @@ function readProjectConfig(): Promise<any> {
 }
 
 function asyncExec(command: string, cwd: string): Promise<string> {
+  console.info(`Running ${command} in ${cwd}`);
   const { promise, resolve, reject } = Promise.withResolvers<string>();
   exec(command, { cwd }, (error, stdout, stderr) => {
     if (error) {
-      resolve(`Command ${command} execution: ${error.message}`);
+      resolve(`Command ${command} execution in ${cwd}: ${error.message}`);
       return;
     }
     if (stderr) {
-      console.error(`Command ${command} stderr: ${stderr}`);
+      console.error(`Command ${command} stderr ${cwd}: ${stderr}`);
       reject(stderr);
     }
     resolve(stdout);
