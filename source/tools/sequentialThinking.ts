@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
 interface ThoughtData {
   thought: string;
@@ -16,6 +17,11 @@ interface ThoughtData {
 class SequentialThinkingManager {
   private thoughtHistory: ThoughtData[] = [];
   private branches: Record<string, ThoughtData[]> = {};
+  private sendData?: SendData;
+
+  constructor(sendData?: SendData) {
+    this.sendData = sendData;
+  }
 
   private validateThoughtData(input: unknown): ThoughtData {
     const data = input as Record<string, unknown>;
@@ -68,7 +74,6 @@ class SequentialThinkingManager {
       context = ` (from thought ${branchFromThought}, ID: ${branchId})`;
     } else {
       prefix = "💭 Thought";
-
       context = "";
     }
 
@@ -85,6 +90,11 @@ class SequentialThinkingManager {
 
   processThought(input: unknown): string {
     try {
+      this.sendData?.({
+        event: "tool-init",
+        data: "Processing new thought",
+      });
+
       const validatedInput = this.validateThoughtData(input);
 
       if (validatedInput.thoughtNumber > validatedInput.totalThoughts) {
@@ -103,6 +113,11 @@ class SequentialThinkingManager {
       const formattedThought = this.formatThought(validatedInput);
       console.error(formattedThought);
 
+      this.sendData?.({
+        event: "tool-completion",
+        data: `Processed thought ${validatedInput.thoughtNumber}/${validatedInput.totalThoughts}`,
+      });
+
       return JSON.stringify(
         {
           thoughtNumber: validatedInput.thoughtNumber,
@@ -115,13 +130,23 @@ class SequentialThinkingManager {
         2,
       );
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : String(error));
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.sendData?.({
+        event: "tool-error",
+        data: `Error processing thought: ${errorMessage}`,
+      });
+      throw new Error(errorMessage);
     }
   }
 }
 
-export const createSequentialThinkingTool = () => {
-  const manager = new SequentialThinkingManager();
+export const createSequentialThinkingTool = ({
+  sendData,
+}: {
+  sendData?: SendData;
+} = {}) => {
+  const manager = new SequentialThinkingManager(sendData);
 
   return {
     sequentialThinking: tool({
@@ -189,9 +214,12 @@ Key features:
         try {
           return Promise.resolve(manager.processThought(params));
         } catch (error) {
-          return Promise.resolve(
-            `Error processing thought: ${(error as Error).message}`,
-          );
+          const errorMessage = `Error processing thought: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return Promise.resolve(errorMessage);
         }
       },
     }),

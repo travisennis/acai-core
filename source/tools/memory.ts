@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import { tool } from "ai";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
 interface Entity {
   name: string;
@@ -21,6 +22,7 @@ interface KnowledgeGraph {
 
 interface KnowledgeGraphOptions {
   path: string;
+  sendData?: SendData;
 }
 
 class KnowledgeGraphManager {
@@ -193,6 +195,7 @@ class KnowledgeGraphManager {
 
 export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
   const manager = new KnowledgeGraphManager(options);
+  const { sendData } = options;
 
   return {
     createEntities: tool({
@@ -211,11 +214,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
         ),
       }),
       execute: async ({ entities }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Creating ${entities.length} new entities`,
+        });
         try {
           const result = await manager.createEntities(entities);
+          sendData?.({
+            event: "tool-completion",
+            data: `Successfully created ${result.length} entities`,
+          });
           return JSON.stringify(result, null, 2);
         } catch (error) {
-          return `Error creating entities: ${(error as Error).message}`;
+          const errorMessage = `Error creating entities: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -237,11 +253,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
         ),
       }),
       execute: async ({ relations }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Creating ${relations.length} new relations`,
+        });
         try {
           const result = await manager.createRelations(relations);
+          sendData?.({
+            event: "tool-completion",
+            data: `Successfully created ${result.length} relations`,
+          });
           return JSON.stringify(result, null, 2);
         } catch (error) {
-          return `Error creating relations: ${(error as Error).message}`;
+          const errorMessage = `Error creating relations: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -262,11 +291,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
         ),
       }),
       execute: async ({ observations }) => {
+        sendData?.({
+          event: "tool-init",
+          data: "Adding new observations to entities",
+        });
         try {
           const result = await manager.addObservations(observations);
+          sendData?.({
+            event: "tool-completion",
+            data: `Successfully added observations to ${result.length} entities`,
+          });
           return JSON.stringify(result, null, 2);
         } catch (error) {
-          return `Error adding observations: ${(error as Error).message}`;
+          const errorMessage = `Error adding observations: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -280,11 +322,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
           .describe("An array of entity names to delete"),
       }),
       execute: async ({ entityNames }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Deleting ${entityNames.length} entities`,
+        });
         try {
           await manager.deleteEntities(entityNames);
+          sendData?.({
+            event: "tool-completion",
+            data: "Entities deleted successfully",
+          });
           return "Entities deleted successfully";
         } catch (error) {
-          return `Error deleting entities: ${(error as Error).message}`;
+          const errorMessage = `Error deleting entities: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -305,11 +360,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
         ),
       }),
       execute: async ({ deletions }) => {
+        sendData?.({
+          event: "tool-init",
+          data: "Deleting observations from entities",
+        });
         try {
           await manager.deleteObservations(deletions);
+          sendData?.({
+            event: "tool-completion",
+            data: "Observations deleted successfully",
+          });
           return "Observations deleted successfully";
         } catch (error) {
-          return `Error deleting observations: ${(error as Error).message}`;
+          const errorMessage = `Error deleting observations: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -330,11 +398,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
         ),
       }),
       execute: async ({ relations }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Deleting ${relations.length} relations`,
+        });
         try {
           await manager.deleteRelations(relations);
+          sendData?.({
+            event: "tool-completion",
+            data: "Relations deleted successfully",
+          });
           return "Relations deleted successfully";
         } catch (error) {
-          return `Error deleting relations: ${(error as Error).message}`;
+          const errorMessage = `Error deleting relations: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -343,11 +424,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
       description: "Read the entire knowledge graph",
       parameters: z.object({}),
       execute: async () => {
+        sendData?.({
+          event: "tool-init",
+          data: "Reading knowledge graph",
+        });
         try {
           const result = await manager.readGraph();
+          sendData?.({
+            event: "tool-completion",
+            data: "Knowledge graph read successfully",
+          });
           return JSON.stringify(result, null, 2);
         } catch (error) {
-          return `Error reading graph: ${(error as Error).message}`;
+          const errorMessage = `Error reading graph: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -362,11 +456,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
           ),
       }),
       execute: async ({ query }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Searching nodes with query: ${query}`,
+        });
         try {
           const result = await manager.searchNodes(query);
+          sendData?.({
+            event: "tool-completion",
+            data: `Found ${result.entities.length} matching entities`,
+          });
           return JSON.stringify(result, null, 2);
         } catch (error) {
-          return `Error searching nodes: ${(error as Error).message}`;
+          const errorMessage = `Error searching nodes: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -379,11 +486,24 @@ export const createKnowledgeGraphTools = (options: KnowledgeGraphOptions) => {
           .describe("An array of entity names to retrieve"),
       }),
       execute: async ({ names }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Opening nodes: ${names.join(", ")}`,
+        });
         try {
           const result = await manager.openNodes(names);
+          sendData?.({
+            event: "tool-completion",
+            data: `Successfully opened ${result.entities.length} nodes`,
+          });
           return JSON.stringify(result, null, 2);
         } catch (error) {
-          return `Error opening nodes: ${(error as Error).message}`;
+          const errorMessage = `Error opening nodes: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),

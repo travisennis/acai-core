@@ -1,8 +1,12 @@
-import { tool } from "ai";
 import { exec } from "node:child_process";
+import { tool } from "ai";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
-export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
+export const createCodeTools = ({
+  baseDir,
+  sendData,
+}: { baseDir: string; sendData?: SendData }) => {
   return {
     buildCode: tool({
       description:
@@ -11,6 +15,12 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
       execute: async () => {
         const config = await readProjectConfig();
         const buildCommand = config.build || "npm run build";
+        if (sendData) {
+          sendData({
+            event: "tool-init",
+            data: `Building code in ${baseDir}`,
+          });
+        }
         try {
           return asyncExec(buildCommand, baseDir);
         } catch (error) {
@@ -24,6 +34,12 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
       parameters: z.object({}),
       execute: async () => {
         const config = await readProjectConfig();
+        if (sendData) {
+          sendData({
+            event: "tool-init",
+            data: `Linting code in ${baseDir}`,
+          });
+        }
         const lintCommand = config.lint || "npm run lint";
         try {
           return asyncExec(lintCommand, baseDir);
@@ -38,6 +54,12 @@ export const createCodeTools = ({ baseDir }: { baseDir: string }) => {
       parameters: z.object({}),
       execute: async () => {
         const config = await readProjectConfig();
+        if (sendData) {
+          sendData({
+            event: "tool-init",
+            data: `Formatting code in ${baseDir}`,
+          });
+        }
         const formatCommand = config.format || "npm run format";
         try {
           return asyncExec(formatCommand, baseDir);

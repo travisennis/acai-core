@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
 interface Bookmark {
   title: string;
@@ -31,7 +32,8 @@ function isApiResponse(data: unknown): data is ApiResponse {
 
 export const createRaindropTools = ({
   apiKey,
-}: Readonly<{ apiKey: string }>) => {
+  sendData,
+}: Readonly<{ apiKey: string; sendData?: SendData }>) => {
   return {
     searchBookmarks: tool({
       description: "Searches for bookmarks.",
@@ -49,6 +51,11 @@ export const createRaindropTools = ({
           ),
       }),
       execute: async ({ search, created }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Searching bookmarks with query: ${search}${created ? ` and created date: ${created}` : ""}`,
+        });
+
         const collectionId = "0";
         let searchFilter = search;
         if (created) {
@@ -67,13 +74,23 @@ export const createRaindropTools = ({
           });
 
           if (!response.ok) {
-            return `HTTP error! status: ${response.status}`;
+            const errorMessage = `HTTP error! status: ${response.status}`;
+            sendData?.({
+              event: "tool-error",
+              data: errorMessage,
+            });
+            return errorMessage;
           }
 
           const data = await response.json();
 
           if (!isApiResponse(data)) {
-            return "Invalid API response format.";
+            const errorMessage = "Invalid API response format.";
+            sendData?.({
+              event: "tool-error",
+              data: errorMessage,
+            });
+            return errorMessage;
           }
 
           const parsedData = data.items.map((item) => ({
@@ -81,9 +98,19 @@ export const createRaindropTools = ({
             link: item.link,
           }));
 
+          sendData?.({
+            event: "tool-completion",
+            data: `Found ${parsedData.length} bookmarks`,
+          });
+
           return JSON.stringify(parsedData);
         } catch (error) {
-          return `Error fetching data: ${error}`;
+          const errorMessage = `Error fetching data: ${error}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),

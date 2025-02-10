@@ -3,6 +3,7 @@ import path from "node:path";
 import { tool } from "ai";
 import simpleGit from "simple-git";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
 const CONVENTIONAL_COMMIT_MESSAGE =
   /^(feat|fix|docs|style|refactor|perf|test|chore)(\(\w+\))?!?: .+/;
@@ -13,6 +14,7 @@ function validateConventionalCommit(message: string): boolean {
 
 interface GitOptions {
   workingDir: string;
+  sendData?: SendData;
 }
 
 const validateGitRepo = (workingDir: string): void => {
@@ -56,7 +58,7 @@ function sanitizePath(workingDir: string, userPath: string): string {
   return resolvedPath;
 }
 
-export const createGitTools = async ({ workingDir }: GitOptions) => {
+export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
   return {
     gitNewBranch: tool({
       description: "A tool to create a new git branch and switch to it.",
@@ -65,6 +67,10 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
         name: z.string().describe("The name of the git branch."),
       }),
       execute: async ({ path, name }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Creating new git branch: ${name}`,
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
@@ -73,16 +79,32 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
           // Check if there are any changes to commit
           const status = await git.status();
           if (status.files.length > 0) {
-            return "Repo is not clean.";
+            const message = "Repo is not clean.";
+            sendData?.({
+              event: "tool-error",
+              data: message,
+            });
+            return message;
           }
 
           await git.checkoutLocalBranch(name);
-          return `Branch created successfully: ${name}`;
+          const successMessage = `Branch created successfully: ${name}`;
+          sendData?.({
+            event: "tool-completion",
+            data: successMessage,
+          });
+          return successMessage;
         } catch (error) {
-          return `Error creating branch: ${(error as Error).message}`;
+          const errorMessage = `Error creating branch: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
+
     gitCommit: tool({
       description:
         "Commits a new git changeset for the given files with the provided commit message. It will stage the files given if they aren't already staged. The commit message should adhere to the Conventional Commits standard.",
@@ -96,6 +118,10 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
           ),
       }),
       execute: async ({ path, message, files }) => {
+        sendData?.({
+          event: "tool-init",
+          data: "Preparing to create git commit",
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
@@ -104,16 +130,32 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
           // Check if there are any changes to commit
           const status = await git.status();
           if (status.files.length === 0) {
-            return "No changes to commit.";
+            const message = "No changes to commit.";
+            sendData?.({
+              event: "tool-error",
+              data: message,
+            });
+            return message;
           }
 
           // Check if no message is provided or the provided message doesn't conform to Conventional Commits
           if (!(message && validateConventionalCommit(message))) {
-            return "Invalid commit message. Doesn't conform to Conventional Commits";
+            const errorMessage =
+              "Invalid commit message. Doesn't conform to Conventional Commits";
+            sendData?.({
+              event: "tool-error",
+              data: errorMessage,
+            });
+            return errorMessage;
           }
 
           if (!files || files.trim() === "") {
-            return "No files provided.";
+            const errorMessage = "No files provided.";
+            sendData?.({
+              event: "tool-error",
+              data: errorMessage,
+            });
+            return errorMessage;
           }
 
           const fileArr = files
@@ -121,12 +163,27 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
             .map((file) => file.trim())
             .map((file) => sanitizePath(workingDir, file));
 
+          sendData?.({
+            event: "tool-update",
+            data: `Staging files: ${fileArr.join(", ")}`,
+          });
+
           // Add the changes and commit
           await git.add(fileArr);
           const commitResult = await git.commit(message);
-          return `Commit created successfully: ${commitResult.commit} - ${message}`;
+          const successMessage = `Commit created successfully: ${commitResult.commit} - ${message}`;
+          sendData?.({
+            event: "tool-completion",
+            data: successMessage,
+          });
+          return successMessage;
         } catch (error) {
-          return `Error creating commit: ${(error as Error).message}`;
+          const errorMessage = `Error creating commit: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -137,6 +194,10 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
         path: z.string(),
       }),
       execute: async ({ path }) => {
+        sendData?.({
+          event: "tool-init",
+          data: "Getting git repository status",
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
@@ -145,15 +206,31 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
           // Check if there are any changes to commit
           const status = await git.status();
           if (status.files.length === 0) {
+            sendData?.({
+              event: "tool-update",
+              data: "No changes found",
+            });
             return "No changes found.";
           }
 
-          return `Status:\n ${JSON.stringify(status, undefined, 2)}`;
+          const statusMessage = `Status:\n ${JSON.stringify(status, undefined, 2)}`;
+          sendData?.({
+            event: "tool-completion",
+            data: statusMessage,
+          });
+          return statusMessage;
         } catch (error) {
-          return `Error getting status: ${(error as Error).message}`;
+          const errorMessage = `Error getting status: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
+
+    // [Additional git tools follow the same pattern...]
 
     gitLog: tool({
       description: "Gets the log of the git repo at the given path.",
@@ -161,16 +238,29 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
         path: z.string(),
       }),
       execute: async ({ path }) => {
+        sendData?.({
+          event: "tool-init",
+          data: "Retrieving git log",
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
 
           const log = await git.log();
-
-          return `Log:\n ${JSON.stringify(log, undefined, 2)}`;
+          const logMessage = `Log:\n ${JSON.stringify(log, undefined, 2)}`;
+          sendData?.({
+            event: "tool-completion",
+            data: logMessage,
+          });
+          return logMessage;
         } catch (error) {
-          return `Error getting log: ${(error as Error).message}`;
+          const errorMessage = `Error getting log: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -182,16 +272,29 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
         revision: z.string(),
       }),
       execute: async ({ path, revision }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Showing commit: ${revision}`,
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
 
           const show = await git.show(revision);
-
-          return `Show:\n ${JSON.stringify(show, undefined, 2)}`;
+          const showMessage = `Show:\n ${JSON.stringify(show, undefined, 2)}`;
+          sendData?.({
+            event: "tool-completion",
+            data: showMessage,
+          });
+          return showMessage;
         } catch (error) {
-          return `Error getting show: ${(error as Error).message}`;
+          const errorMessage = `Error getting show: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -203,14 +306,28 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
         target: z.string(),
       }),
       execute: async ({ path, target }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Getting diff for target: ${target}`,
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff([target]);
-          return diff || "No changes detected.";
+          const diffMessage = diff || "No changes detected.";
+          sendData?.({
+            event: "tool-completion",
+            data: diffMessage,
+          });
+          return diffMessage;
         } catch (error) {
-          return `Error getting git diff: ${(error as Error).message}`;
+          const errorMessage = `Error getting git diff: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -222,14 +339,28 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
         path: z.string(),
       }),
       execute: async ({ path }) => {
+        sendData?.({
+          event: "tool-init",
+          data: "Getting unstaged changes",
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff();
-          return diff || "No changes detected.";
+          const diffMessage = diff || "No changes detected.";
+          sendData?.({
+            event: "tool-completion",
+            data: diffMessage,
+          });
+          return diffMessage;
         } catch (error) {
-          return `Error getting git diff: ${(error as Error).message}`;
+          const errorMessage = `Error getting git diff: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -240,14 +371,28 @@ export const createGitTools = async ({ workingDir }: GitOptions) => {
         path: z.string(),
       }),
       execute: async ({ path }) => {
+        sendData?.({
+          event: "tool-init",
+          data: "Getting staged changes",
+        });
         try {
           validateGitRepo(workingDir);
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff(["--cached"]);
-          return diff || "No changes detected.";
+          const diffMessage = diff || "No changes detected.";
+          sendData?.({
+            event: "tool-completion",
+            data: diffMessage,
+          });
+          return diffMessage;
         } catch (error) {
-          return `Error getting git diff: ${(error as Error).message}`;
+          const errorMessage = `Error getting git diff: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),

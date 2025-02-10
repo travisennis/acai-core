@@ -6,6 +6,7 @@ import { createTwoFilesPatch } from "diff";
 import ignore, { type Ignore } from "ignore";
 import { minimatch } from "minimatch";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
 // Normalize all paths consistently
 function normalizePath(p: string): string {
@@ -337,6 +338,7 @@ export async function directoryTree(dirPath: string): Promise<string> {
 
 interface FileSystemOptions {
   workingDir: string;
+  sendData?: SendData;
 }
 
 const fileEncodingSchema = z.enum([
@@ -365,6 +367,7 @@ export const READ_ONLY = [
 
 export const createFileSystemTools = async ({
   workingDir,
+  sendData,
 }: FileSystemOptions) => {
   // Store allowed directories in normalized form
   const allowedDirectories = [workingDir].map((dir) =>
@@ -393,6 +396,10 @@ export const createFileSystemTools = async ({
         "Get the current working directory. Use this to understand which directory is available before trying to access files.",
       parameters: z.object({}),
       execute: () => {
+        sendData?.({
+          event: "tool-init",
+          data: "Getting current working directory",
+        });
         return Promise.resolve(workingDir);
       },
     }),
@@ -406,16 +413,29 @@ export const createFileSystemTools = async ({
       parameters: z.object({
         path: z.string().describe("Absolute path to directory to create"),
       }),
-      execute: async ({ path }) => {
+      execute: async ({ path: dirPath }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Creating directory: ${dirPath}`,
+        });
         try {
           const validPath = await validatePath(
-            joinWorkingDir(path, workingDir),
+            joinWorkingDir(dirPath, workingDir),
             allowedDirectories,
           );
           await fs.mkdir(validPath, { recursive: true });
-          return `Successfully created directory ${path}`;
+          sendData?.({
+            event: "tool-completion",
+            data: `Directory created successfully: ${dirPath}`,
+          });
+          return `Successfully created directory ${dirPath}`;
         } catch (error) {
-          return `Failed to create directory: ${(error as Error).message}`;
+          const errorMessage = `Failed to create directory: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -434,12 +454,20 @@ export const createFileSystemTools = async ({
         ),
       }),
       execute: async ({ path: userPath, is_image, encoding }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Reading file: ${userPath}`,
+        });
         try {
           const filePath = await validatePath(
             joinWorkingDir(userPath, workingDir),
             allowedDirectories,
           );
           const file = await fs.readFile(filePath, { encoding });
+          sendData?.({
+            event: "tool-completion",
+            data: `File read successfully: ${userPath}`,
+          });
           if (is_image) {
             return `data:image/${path
               .extname(filePath)
@@ -547,7 +575,12 @@ export const createFileSystemTools = async ({
           );
           return results.length > 0 ? results.join("\n") : "No matches found";
         } catch (error) {
-          return `Failed to search files: ${(error as Error).message}`;
+          const errorMessage = `Failed to search files: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -587,12 +620,20 @@ export const createFileSystemTools = async ({
         ),
       }),
       execute: async ({ path: userPath, content, encoding }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Saving file: ${userPath}`,
+        });
         try {
           const filePath = await validatePath(
             joinWorkingDir(userPath, workingDir),
             allowedDirectories,
           );
           await fs.writeFile(filePath, content, { encoding });
+          sendData?.({
+            event: "tool-completion",
+            data: `File saved successfully: ${userPath}`,
+          });
           return `File saved successfully: ${filePath}`;
         } catch (error) {
           return `Failed to save file: ${(error as Error).message}`;
@@ -651,7 +692,12 @@ export const createFileSystemTools = async ({
             )
             .join("\n");
         } catch (error) {
-          return `Failed to list directory: ${(error as Error).message}`;
+          const errorMessage = `Failed to list directory: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),

@@ -1,5 +1,3 @@
-import { tool } from "ai";
-import { z } from "zod";
 import * as _crypto from "node:crypto";
 import * as _fs from "node:fs";
 import * as _http from "node:http";
@@ -7,6 +5,9 @@ import * as _https from "node:https";
 import * as _os from "node:os";
 import * as _process from "node:process";
 import { runInNewContext } from "node:vm";
+import { tool } from "ai";
+import { z } from "zod";
+import type { SendData } from "./types.ts";
 
 export enum InterpreterPermission {
   FS = "fs",
@@ -19,6 +20,7 @@ export enum InterpreterPermission {
 function codeInterpreterJavascript(
   code: string,
   permissions: readonly InterpreterPermission[],
+  sendData?: SendData,
 ) {
   const context: Record<string, any> = { console };
 
@@ -42,19 +44,44 @@ function codeInterpreterJavascript(
   const options = { timeout: 120 * 1000 }; // Timeout in milliseconds
 
   try {
-    return runInNewContext(`(function() { ${code} })()`, context, options);
+    sendData?.({
+      event: "tool-init",
+      data: "Initializing code interpreter environment",
+    });
+
+    const result = runInNewContext(
+      `(function() { ${code} })()`,
+      context,
+      options,
+    );
+
+    sendData?.({
+      event: "tool-completion",
+      data: "Code execution completed successfully",
+    });
+
+    return result;
   } catch (err) {
-    if ((err as Error).name === "TimeoutError") {
-      return "Script timed out";
-    }
-    return `Error: ${err}`;
+    const errorMessage =
+      (err as Error).name === "TimeoutError"
+        ? "Script timed out"
+        : `Error: ${err}`;
+
+    sendData?.({
+      event: "tool-error",
+      data: errorMessage,
+    });
+
+    return errorMessage;
   }
 }
 
 export const createCodeInterpreterTool = ({
   permissions = [],
+  sendData,
 }: Readonly<{
   permissions?: readonly InterpreterPermission[];
+  sendData?: SendData;
 }>) => {
   return {
     codeInterpreter: tool({
@@ -64,7 +91,7 @@ export const createCodeInterpreterTool = ({
         code: z.string().describe("Javascript code to be executed."),
       }),
       execute: ({ code }: { code: string }) => {
-        return codeInterpreterJavascript(code, permissions ?? []);
+        return codeInterpreterJavascript(code, permissions ?? [], sendData);
       },
     }),
   };

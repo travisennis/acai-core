@@ -1,8 +1,10 @@
 import { tool } from "ai";
 import * as cheerio from "cheerio";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
-export const createUrlTools = () => {
+export const createUrlTools = (options: { sendData?: SendData } = {}) => {
+  const { sendData } = options;
   return {
     readUrl: tool({
       description: "Reads the contents of the file at the given url.",
@@ -10,25 +12,41 @@ export const createUrlTools = () => {
         url: z.string().describe("The URL"),
       }),
       execute: ({ url }) => {
-        return loadUrl(url);
+        try {
+          sendData?.({
+            event: "tool-init",
+            data: `Reading URL for ${url}`,
+          });
+          return loadUrl(url);
+        } catch (error) {
+          sendData?.({
+            event: "tool-error",
+            data: `Error reading URL for ${url}`,
+          });
+          return Promise.resolve((error as Error).message);
+        }
       },
     }),
   };
 };
 
 export async function loadUrl(url: string): Promise<string> {
-  const apiKey = process.env.JINA_READER_API_KEY;
-  const readUrl = `https://r.jina.ai/${url}`;
-  const response = await fetch(readUrl, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-  });
+  try {
+    const apiKey = process.env.JINA_READER_API_KEY;
+    const readUrl = `https://r.jina.ai/${url}`;
+    const response = await fetch(readUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
 
-  if (response.ok) {
-    const data = await response.text();
-    return data;
+    if (response.ok) {
+      const data = await response.text();
+      return data;
+    }
+  } catch (error) {
+    console.error(`Failed to fetch Jina: ${(error as Error).message}`);
   }
 
   console.info("Falling back to fetch.");
@@ -47,7 +65,7 @@ export async function loadUrl(url: string): Promise<string> {
     }
     return await response.text();
   } catch (error) {
-    return `Error fetching data: ${error}`;
+    throw new Error(`Error fetching data: ${error}`);
   }
 }
 

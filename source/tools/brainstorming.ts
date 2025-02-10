@@ -2,20 +2,28 @@ import { tool } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import { bigMindMapping } from "../brainstorm/bigMindMapping.ts";
+import { brainstorm } from "../brainstorm/index.ts";
 import { reverseBrainstorming } from "../brainstorm/reverseBrainstorming.ts";
 import { roleStorming } from "../brainstorm/roleStorming.ts";
 import { scamper } from "../brainstorm/scamper.ts";
 import { sixHats } from "../brainstorm/sixHats.ts";
 import { starbursting } from "../brainstorm/starBursting.ts";
-import { brainstorm } from "../brainstorm/index.ts";
+import type { SendData } from "./types.ts";
 
-export const createBrainstormingTools = (model: LanguageModel) => {
+export const createBrainstormingTools = (
+  model: LanguageModel,
+  { sendData }: { sendData?: SendData } = {},
+) => {
   return {
     listBrainStormingStrategies: tool({
       description:
         "Returns a comma-separated list of the supported brainstorming strategies",
       parameters: z.object({}),
       execute: () => {
+        sendData?.({
+          event: "tool-init",
+          data: "Listing available brainstorming strategies",
+        });
         return Promise.resolve(
           "bigMindMapping, reverseBrainstorming, roleStorming, scamper, sixHats, starbursting",
         );
@@ -33,6 +41,10 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           .describe("Number of ideas to generate at each level (default: 5)"),
       }),
       execute: async ({ idea, n }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Starting Big Mind Mapping analysis for: ${idea}`,
+        });
         try {
           const result = await brainstorm({
             model,
@@ -42,7 +54,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           });
           return result;
         } catch (error) {
-          return `Error in big mind mapping: ${(error as Error).message}`;
+          const errorMessage = `Error in big mind mapping: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -60,6 +77,10 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           .describe("Number of problems to identify (default: 5)"),
       }),
       execute: async ({ idea, n }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Starting Reverse Brainstorming analysis for: ${idea}`,
+        });
         try {
           const result = await brainstorm({
             model,
@@ -69,7 +90,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           });
           return result;
         } catch (error) {
-          return `Error in reverse brainstorming: ${(error as Error).message}`;
+          const errorMessage = `Error in reverse brainstorming: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -89,6 +115,10 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           .describe("Number of initial ideas to generate (default: 5)"),
       }),
       execute: async ({ idea, n }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Starting Role Storming analysis for: ${idea}`,
+        });
         try {
           const result = await brainstorm({
             model,
@@ -98,7 +128,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           });
           return result;
         } catch (error) {
-          return `Error in role storming: ${(error as Error).message}`;
+          const errorMessage = `Error in role storming: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -116,6 +151,10 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           .describe("Number of initial ideas to generate (default: 5)"),
       }),
       execute: async ({ idea, n }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Starting SCAMPER analysis for: ${idea}`,
+        });
         try {
           const result = await brainstorm({
             model,
@@ -125,7 +164,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           });
           return result;
         } catch (error) {
-          return `Error in SCAMPER analysis: ${(error as Error).message}`;
+          const errorMessage = `Error in SCAMPER analysis: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -143,6 +187,10 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           .describe("Number of initial ideas to generate (default: 5)"),
       }),
       execute: async ({ idea, n }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Starting Six Thinking Hats analysis for: ${idea}`,
+        });
         try {
           const result = await brainstorm({
             model,
@@ -152,7 +200,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           });
           return result;
         } catch (error) {
-          return `Error in Six Hats analysis: ${(error as Error).message}`;
+          const errorMessage = `Error in Six Hats analysis: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),
@@ -170,6 +223,10 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           .describe("Number of initial ideas to generate (default: 5)"),
       }),
       execute: async ({ idea, n }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Starting Starbursting analysis for: ${idea}`,
+        });
         try {
           const result = await brainstorm({
             model,
@@ -179,7 +236,12 @@ export const createBrainstormingTools = (model: LanguageModel) => {
           });
           return result;
         } catch (error) {
-          return `Error in Starbursting analysis: ${(error as Error).message}`;
+          const errorMessage = `Error in Starbursting analysis: ${(error as Error).message}`;
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+          return errorMessage;
         }
       },
     }),

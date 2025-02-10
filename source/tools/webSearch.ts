@@ -7,8 +7,12 @@ import {
 } from "ai";
 import { getJson } from "serpapi";
 import { z } from "zod";
+import type { SendData } from "./types.ts";
 
-export const createWebSearchTools = ({ model }: { model: LanguageModel }) => {
+export const createWebSearchTools = ({
+  model,
+  sendData,
+}: { model: LanguageModel; sendData?: SendData }) => {
   return {
     searchLinks: tool({
       description:
@@ -17,14 +21,27 @@ export const createWebSearchTools = ({ model }: { model: LanguageModel }) => {
         query: z.string().describe("The search query."),
       }),
       execute: async ({ query }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Searching the web for links with query: ${query}`,
+        });
         try {
           const response = await getJson({
             engine: "google",
             api_key: process.env.SERPAPI_API_KEY,
             q: query,
           });
+
+          sendData?.({
+            event: "tool-completion",
+            data: `Successfully retrieved search links for query: ${query}`,
+          });
           return formatSearchResults(response.organic_results);
         } catch (error) {
+          sendData?.({
+            event: "tool-error",
+            data: `Error fetching search results for query ${query}: ${error}`,
+          });
           return `Error fetching search results: ${error}`;
         }
       },
@@ -36,10 +53,18 @@ export const createWebSearchTools = ({ model }: { model: LanguageModel }) => {
         query: z.string().describe("The search query."),
       }),
       execute: async ({ query }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Searching the web for an answer with query: ${query}`,
+        });
         const { text, experimental_providerMetadata } = await generateText({
           model: model,
           temperature: 1.0,
           prompt: query,
+        });
+        sendData?.({
+          event: "tool-completion",
+          data: `Successfully generated answer for query: ${query}`,
         });
         const metadata = parseMetadata(experimental_providerMetadata);
         const sources = metadata.sources.map(
