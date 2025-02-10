@@ -17,8 +17,8 @@
       "default": "./dist/middleware/index.js"
     },
     "./optim": {
-      "types": "./dist/optim/index.d.ts",
-      "default": "./dist/optim/index.js"
+      "types": "./dist/optim/*.d.ts",
+      "default": "./dist/optim/*.js"
     },
     "./tools": {
       "types": "./dist/tools/index.d.ts",
@@ -26,10 +26,7 @@
     }
   },
   "packageManager": "npm",
-  "keywords": [
-    "ai",
-    "llm"
-  ],
+  "keywords": ["ai", "llm"],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
