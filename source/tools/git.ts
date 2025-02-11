@@ -58,6 +58,15 @@ function sanitizePath(workingDir: string, userPath: string): string {
   return resolvedPath;
 }
 
+export const GIT_READ_ONLY = [
+  "gitStatus",
+  "gitLog",
+  "gitShow",
+  "gitDiff",
+  "gitDiffUnstaged",
+  "gitDiffStaged",
+] as const;
+
 export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
   return {
     gitNewBranch: tool({
