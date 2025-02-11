@@ -63,7 +63,6 @@ const appendToFile = async (
 export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
   const middleware: LanguageModelV1Middleware = {
     wrapGenerate: async ({ doGenerate, params, model }) => {
-      console.info("audit message middleware");
       try {
         const result = await doGenerate();
 
