@@ -239,14 +239,19 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       },
     }),
 
-    // [Additional git tools follow the same pattern...]
-
     gitLog: tool({
-      description: "Gets the log of the git repo at the given path.",
+      description:
+        "Gets the log of the git repo at the given path. Unless told otherwise, will return the 3 most recent commits.",
       parameters: z.object({
         path: z.string(),
+        n: z
+          .number()
+          .optional()
+          .describe(
+            "The number of commits to return in the log. This value is passed --max-count",
+          ),
       }),
-      execute: async ({ path }) => {
+      execute: async ({ path, n }) => {
         sendData?.({
           event: "tool-init",
           data: "Retrieving git log",
@@ -256,7 +261,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
 
-          const log = await git.log();
+          const log = await git.log({ maxCount: n ?? 3 });
           const logMessage = `Log:\n ${JSON.stringify(log, undefined, 2)}`;
           sendData?.({
             event: "tool-completion",
