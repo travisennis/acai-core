@@ -26,10 +26,7 @@
     }
   },
   "packageManager": "npm",
-  "keywords": [
-    "ai",
-    "llm"
-  ],
+  "keywords": ["ai", "llm"],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
