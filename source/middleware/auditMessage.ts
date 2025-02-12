@@ -70,6 +70,7 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
           model: model.modelId,
           prompt: params.prompt,
           response: result.text,
+          timestamp: Date.now(),
         };
 
         await appendToFile(path, JSON.stringify(msg));
@@ -104,6 +105,7 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
               model: model.modelId,
               prompt: params.prompt,
               response: generatedText,
+              timestamp: Date.now(),
             };
 
             await appendToFile(path, JSON.stringify(msg));
