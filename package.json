@@ -37,10 +37,10 @@
     "lint:fix": "biome lint --unsafe --write",
     "lint:staged": "biome lint --error-on-warnings --no-errors-on-unmatched --staged",
     "prepare": "npm run compile",
-    "test": "node --loader tsx --test test/**/*.test.ts",
+    "test": "node --test test/**/*.test.ts",
     "pretest": "npm run compile",
     "format": "biome format --write",
-    "dev": "tsx ./source/index.ts",
+    "dev": "node ./source/index.ts",
     "oxlint": "npx oxlint@latest --ignore-path .gitignore --deny correctness --deny suspicous --deny pedantic --deny style --node-plugin",
     "knip": "npx knip",
     "check": "npx npm-check-updates  --interactive --format group"
@@ -67,7 +67,6 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/diff": "^7.0.1",
     "@types/node": "^22.13.1",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   },
   "publishConfig": {
