@@ -14,19 +14,17 @@ export async function bon({
   let tokens = 0;
 
   const completions = await Promise.all(
-    Array(n)
-      .fill(0)
-      .map(async (_) => {
-        const { text, usage } = await generateText({
-          model: model,
-          maxTokens: 4096,
-          temperature: 1.0,
-          system,
-          prompt,
-        });
-        tokens += usage.completionTokens;
-        return text;
-      }),
+    new Array(n).fill(0).map(async (_) => {
+      const { text, usage } = await generateText({
+        model: model,
+        maxTokens: 4096,
+        temperature: 1.0,
+        system,
+        prompt,
+      });
+      tokens += usage.completionTokens;
+      return text;
+    }),
   );
 
   const ratings = await Promise.all(
@@ -60,7 +58,11 @@ function zip<T, U>(arr1: T[], arr2: U[]): [T, U][] {
   const result: [T, U][] = [];
 
   for (let i = 0; i < length; i++) {
-    result.push([arr1[i], arr2[i]]);
+    const arr1Value = arr1[i];
+    const arr2Value = arr2[i];
+    if (arr1Value && arr2Value) {
+      result.push([arr1Value, arr2Value]);
+    }
   }
 
   return result;

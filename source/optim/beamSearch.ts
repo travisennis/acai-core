@@ -1,5 +1,4 @@
 import { generateText, type LanguageModel } from "ai";
-import { languageModel } from "../providers.ts";
 
 interface BeamNode {
   text: string;
@@ -28,7 +27,6 @@ class BeamSearch {
   }
 
   async generate(prompt: string): Promise<string[]> {
-    console.log(this.beamWidth);
     // Initialize beam with the first node
     let beams: BeamNode[] = [
       {
@@ -54,16 +52,14 @@ class BeamSearch {
         try {
           // Get next token predictions using Anthropic API
           const continuations = await Promise.all(
-            Array(this.beamWidth)
-              .fill(0)
-              .map((_) => {
-                return generateText({
-                  model: this.model,
-                  maxTokens: 5,
-                  temperature: this.temperature,
-                  prompt: `${beam.text}\n\nContinue this text with a few words. It does not have to be a complete thought or sentence. Just the most likely continuation of the provided text. Do not include the provided text.`,
-                });
-              }),
+            new Array(this.beamWidth).fill(0).map((_) => {
+              return generateText({
+                model: this.model,
+                maxTokens: 5,
+                temperature: this.temperature,
+                prompt: `${beam.text}\n\nContinue this text with a few words. It does not have to be a complete thought or sentence. Just the most likely continuation of the provided text. Do not include the provided text.`,
+              });
+            }),
           );
 
           // Create new beam nodes for each continuation

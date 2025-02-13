@@ -12,12 +12,14 @@ export const dedent: Dedent = (
   // Perform interpolation
   let result = "";
   for (let i = 0; i < strings.raw.length; i++) {
-    const next = strings.raw[i]
-      // handle escaped newlines, backticks, and interpolation characters
-      .replace(/\\\n[ \t]*/g, "")
-      .replace(/\\`/g, "`")
-      .replace(/\\\$/g, "$")
-      .replace(/\\\{/g, "{");
+    const next =
+      strings.raw[i] ??
+      ""
+        // handle escaped newlines, backticks, and interpolation characters
+        .replace(/\\\n[ \t]*/g, "")
+        .replace(/\\`/g, "`")
+        .replace(/\\\$/g, "$")
+        .replace(/\\\{/g, "{");
 
     result += next;
 
@@ -33,7 +35,7 @@ export const dedent: Dedent = (
   for (const line of lines) {
     const m = line.match(spaces);
     if (m) {
-      const indent = m[1].length;
+      const indent = m[1]?.length ?? 0;
       mindent = mindent === null ? indent : Math.min(mindent, indent);
     }
   }

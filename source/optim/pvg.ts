@@ -1,6 +1,7 @@
 import { type LanguageModel, generateText } from "ai";
 import { dedent } from "../dedent.ts";
 
+// biome-ignore lint/style/useNamingConvention: <explanation>
 export class PVG {
   private model: LanguageModel;
   private systemPrompt: string;
@@ -89,13 +90,13 @@ Ensure that the Score is a single number between 0 and 10, and the Explanation i
 
     const scores: number[] = [];
     const explanations: string[] = [];
-    for (let i = 0; i < solutions.length; i++) {
+    for (const solution of solutions) {
       const { text, usage } = await generateText({
         model: this.model,
         maxTokens: 1024,
         temperature: 0.2,
         system: verifyPrompt,
-        prompt: `Problem: ${initialQuery}\n\nSolution: ${solutions[i]}`,
+        prompt: `Problem: ${initialQuery}\n\nSolution: ${solution}`,
       });
 
       this.completionTokens += usage.completionTokens;
@@ -105,10 +106,10 @@ Ensure that the Score is a single number between 0 and 10, and the Explanation i
 
       if (scoreMatch) {
         try {
-          const score = Number.parseFloat(scoreMatch[1]);
+          const score = Number.parseFloat(scoreMatch[1] ?? "");
           scores.push(score);
           if (explanationMatch) {
-            const explanation = explanationMatch[1].trim();
+            const explanation = explanationMatch[1]?.trim() ?? "";
             explanations.push(explanation);
           }
         } catch (_error) {
@@ -192,11 +193,11 @@ export async function pvg({
     response += `Verification Details:\n${JSON.stringify(verificationDetails, null, 2)}\n\n`;
 
     const roundBestIndex = scores.indexOf(Math.max(...scores));
-    const roundBestScore = scores[roundBestIndex];
+    const roundBestScore = scores[roundBestIndex] ?? 0;
     const roundBestSolution = allSolutions[roundBestIndex];
 
     if (roundBestScore > bestScore) {
-      bestSolution = roundBestSolution;
+      bestSolution = roundBestSolution ?? "";
       bestScore = roundBestScore;
     }
 

@@ -1,6 +1,7 @@
 import { type LanguageModel, generateText } from "ai";
 import { dedent } from "../dedent.ts";
 
+// biome-ignore lint/style/useNamingConvention: <explanation>
 class LEAP {
   private model: LanguageModel;
   private systemPrompt: string | undefined;
@@ -18,7 +19,7 @@ class LEAP {
 
   private extractOutput(text: string): string {
     const match = text.match(/<output>(.*?)(?:<\/output>|$)/s);
-    return match ? match[1].trim() : "";
+    return match ? (match[1]?.trim() ?? "") : "";
   }
 
   private async extractExamplesFromQuery(

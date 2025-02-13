@@ -107,7 +107,7 @@ class SequentialThinkingManager {
         if (!this.branches[validatedInput.branchId]) {
           this.branches[validatedInput.branchId] = [];
         }
-        this.branches[validatedInput.branchId].push(validatedInput);
+        this.branches[validatedInput.branchId]?.push(validatedInput);
       }
 
       const formattedThought = this.formatThought(validatedInput);

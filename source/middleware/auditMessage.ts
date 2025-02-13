@@ -30,7 +30,7 @@ const checkAndRolloverFile = async (filePath: string): Promise<void> => {
       .filter((f) => f.startsWith(`${basePattern}-`) && f.endsWith(ext))
       .map((f) => {
         const match = f.match(new RegExp(`${basePattern}-(\\d+)${ext}`));
-        return match ? Number.parseInt(match[1]) : 0;
+        return match ? Number.parseInt(match[1] ?? "") : 0;
       });
 
     const nextNumber =

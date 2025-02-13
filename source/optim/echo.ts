@@ -5,6 +5,7 @@ import {
   generateText,
 } from "ai";
 
+// biome-ignore lint/style/useNamingConvention: <explanation>
 class ECHOImplementation {
   private model: LanguageModel;
   private embeddingModel: EmbeddingModel<string>;
@@ -71,7 +72,7 @@ class ECHOImplementation {
         );
         const context = this.createContext(othersShuffled);
         const newRationale = await this.generateWithContext(
-          currentDemonstrations[j].question.text,
+          currentDemonstrations[j]?.question.text ?? "",
           context,
         );
         currentDemonstrations[j] = {
@@ -163,14 +164,16 @@ class ECHOImplementation {
           }
         });
 
-        clusters[closestClusterIndex].points.push(point);
+        clusters[closestClusterIndex]?.points.push(point);
       }
 
       // Update centroids
       centroids = clusters.map((cluster) => {
-        if (cluster.points.length === 0) return cluster.centroid;
+        if (cluster.points.length === 0) {
+          return cluster.centroid;
+        }
 
-        const newCentroid = new Array(cluster.points[0].embedding.length).fill(
+        const newCentroid = new Array(cluster.points[0]?.embedding.length).fill(
           0,
         );
         for (const point of cluster.points) {
@@ -184,7 +187,9 @@ class ECHOImplementation {
       // Check convergence
       const hasConverged =
         previousClusters && this.clustersEqual(clusters, previousClusters);
-      if (hasConverged || iteration >= maxIterations) break;
+      if (hasConverged || iteration >= maxIterations) {
+        break;
+      }
 
       previousClusters = JSON.parse(JSON.stringify(clusters));
       iteration++;
@@ -217,14 +222,22 @@ class ECHOImplementation {
   }
 
   private euclideanDistance(a: number[], b: number[]) {
-    return Math.sqrt(a.reduce((sum, value, i) => sum + (value - b[i]) ** 2, 0));
+    return Math.sqrt(
+      a.reduce((sum, value, i) => sum + (value - (b[i] ?? 0)) ** 2, 0),
+    );
   }
 
   private shuffleArray<T>(array: T[]): T[] {
     const newArray = [...array];
     for (let i = newArray.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      // Since we know i and j are valid indices (j is always <= i),
+      // we can use a temporary variable to make the swap type-safe
+      const temp = newArray[i];
+      if (temp !== undefined && newArray[j] !== undefined) {
+        newArray[i] = newArray[j];
+        newArray[j] = temp;
+      }
     }
     return newArray;
   }
@@ -235,7 +248,7 @@ class ECHOImplementation {
   ) {
     return c1.every((cluster, i) =>
       cluster.centroid.every(
-        (value, j) => Math.abs(value - c2[i].centroid[j]) < 0.0001,
+        (value, j) => Math.abs(value - (c2[i]?.centroid[j] ?? 0)) < 0.0001,
       ),
     );
   }

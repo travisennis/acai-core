@@ -216,15 +216,17 @@ async function applyFileEdits(
 
       // Compare lines with normalized whitespace
       const isMatch = oldLines.every((oldLine, j) => {
-        const contentLine = potentialMatch[j];
+        const contentLine = potentialMatch[j] ?? "";
         return oldLine.trim() === contentLine.trim();
       });
 
       if (isMatch) {
         // Preserve original indentation of first line
-        const originalIndent = contentLines[i].match(INDENT_REGEX)?.[0] || "";
+        const originalIndent = contentLines[i]?.match(INDENT_REGEX)?.[0] || "";
         const newLines = normalizedNew.split("\n").map((line, j) => {
-          if (j === 0) return originalIndent + line.trimStart();
+          if (j === 0) {
+            return originalIndent + line.trimStart();
+          }
 
           // For subsequent lines, try to preserve relative indentation
           const oldIndent = oldLines[j]?.match(INDENT_REGEX)?.[0] || "";
@@ -300,7 +302,7 @@ async function generateDirectoryTree(
     const filteredItems = ig.filter(items);
 
     for (let i = 0; i < filteredItems.length; i++) {
-      const item = filteredItems[i];
+      const item = filteredItems[i] ?? "";
       const itemPath = path.join(dirPath, item);
       const isLast = i === items.length - 1;
       const stats = await fs.stat(itemPath);
@@ -448,12 +450,12 @@ export const createFileSystemTools = async ({
         "the contents of a single file. Only works within allowed directories.",
       parameters: z.object({
         path: z.string().describe("Absolute path to file to read"),
-        is_image: z.boolean().describe("Specify if the file is an image"),
+        isImage: z.boolean().describe("Specify if the file is an image"),
         encoding: fileEncodingSchema.describe(
           'Encoding format for reading the file. Use "utf-8" as default for text files',
         ),
       }),
-      execute: async ({ path: userPath, is_image, encoding }) => {
+      execute: async ({ path: userPath, isImage, encoding }) => {
         sendData?.({
           event: "tool-init",
           data: `Reading file: ${userPath}`,
@@ -468,7 +470,7 @@ export const createFileSystemTools = async ({
             event: "tool-completion",
             data: `File read successfully: ${userPath}`,
           });
-          if (is_image) {
+          if (isImage) {
             return `data:image/${path
               .extname(filePath)
               .toLowerCase()
