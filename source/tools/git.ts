@@ -70,7 +70,8 @@ export const GIT_READ_ONLY = [
 export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
   return {
     gitNewBranch: tool({
-      description: "A tool to create a new git branch and switch to it. (Git command: `git checkout -b`)",
+      description:
+        "A tool to create a new git branch and switch to it. (Git command: `git checkout -b`)",
       parameters: z.object({
         path: z.string().describe("The path to the git repo."),
         name: z.string().describe("The name of the git branch."),
@@ -198,7 +199,8 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
     }),
 
     gitStatus: tool({
-      description: "Get the status of the git repo at the given path. (Git command: `git status`)",
+      description:
+        "Get the status of the git repo at the given path. (Git command: `git status`)",
       parameters: z.object({
         path: z.string(),
       }),
@@ -314,7 +316,8 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
     }),
 
     gitDiff: tool({
-      description: "Shows differences between branches or commits. (Git command: `git diff`)",
+      description:
+        "Shows differences between branches or commits. (Git command: `git diff`)",
       parameters: z.object({
         path: z.string(),
         target: z.string(),
@@ -380,7 +383,8 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
     }),
 
     gitDiffStaged: tool({
-      description: "Shows changes that are staged for commit. (Git command: `git diff --cached`)",
+      description:
+        "Shows changes that are staged for commit. (Git command: `git diff --cached`)",
       parameters: z.object({
         path: z.string(),
       }),
