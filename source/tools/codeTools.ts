@@ -50,7 +50,7 @@ export const createCodeTools = ({
     }),
     formatCode: tool({
       description:
-        "Executes the 'format' command on the current code base and returns the results. This reports style and formatting issues with the code base",
+        "Executes the 'format' command on the current code base and returns the results. This reports style and formatting issues with the code base.",
       parameters: z.object({}),
       execute: async () => {
         const config = await readProjectConfig();
@@ -65,6 +65,26 @@ export const createCodeTools = ({
           return asyncExec(formatCommand, baseDir);
         } catch (error) {
           return `Failed to execute format command: ${(error as Error).message}`;
+        }
+      },
+    }),
+    testCode: tool({
+      description:
+        "Executes the 'test' command on the current code base to run unit tests and return the results.",
+      parameters: z.object({}),
+      execute: async () => {
+        const config = await readProjectConfig();
+        if (sendData) {
+          sendData({
+            event: "tool-init",
+            data: `Running unit tests in ${baseDir}`,
+          });
+        }
+        const testCommand = config.test || "npm run test";
+        try {
+          return asyncExec(testCommand, baseDir);
+        } catch (error) {
+          return `Failed to execute test command: ${(error as Error).message}`;
         }
       },
     }),
