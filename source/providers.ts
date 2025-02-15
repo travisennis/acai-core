@@ -5,7 +5,7 @@ import {
 import { createAzure } from "@ai-sdk/azure";
 import { deepseek as originalDeepseek } from "@ai-sdk/deepseek";
 import { google as originalGoogle } from "@ai-sdk/google";
-import { createOpenAI, openai as originalOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, openai as originalOpenAi } from "@ai-sdk/openai";
 import {
   experimental_createProviderRegistry as createProviderRegistry,
   customProvider,
@@ -22,6 +22,7 @@ const azure = customProvider({
 });
 
 const openRouterClient = createOpenAI({
+  // biome-ignore lint/style/useNamingConvention: <explanation>
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
 });
@@ -56,19 +57,19 @@ const anthropic = customProvider({
 
 const openai = customProvider({
   languageModels: {
-    "gpt-4o": originalOpenAI("gpt-4o-2024-11-20"),
-    "gpt-4o-mini": originalOpenAI("gpt-4o-mini"),
-    "gpt-4o-structured": originalOpenAI("gpt-4o-2024-11-20", {
+    "gpt-4o": originalOpenAi("gpt-4o-2024-11-20"),
+    "gpt-4o-mini": originalOpenAi("gpt-4o-mini"),
+    "gpt-4o-structured": originalOpenAi("gpt-4o-2024-11-20", {
       structuredOutputs: true,
     }),
-    "gpt-4o-mini-structured": originalOpenAI("gpt-4o-mini", {
+    "gpt-4o-mini-structured": originalOpenAi("gpt-4o-mini", {
       structuredOutputs: true,
     }),
-    o1: originalOpenAI("o1-preview"),
-    "o1-mini": originalOpenAI("o1-mini"),
-    "o3-mini": originalOpenAI("o3-mini"),
+    o1: originalOpenAi("o1-preview"),
+    "o1-mini": originalOpenAi("o1-mini"),
+    "o3-mini": originalOpenAi("o3-mini"),
   },
-  fallbackProvider: originalOpenAI,
+  fallbackProvider: originalOpenAi,
 });
 
 const google = customProvider({
