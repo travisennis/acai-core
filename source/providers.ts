@@ -167,3 +167,87 @@ function isString(value: unknown): value is string {
 export function languageModel(input: ModelName) {
   return registry.languageModel(input);
 }
+
+export const ModelConfig: Record<ModelName, { maxOutputTokens: number }> = {
+  "anthropic:sonnet": {
+    maxOutputTokens: 8_192,
+  },
+  "anthropic:opus": {
+    maxOutputTokens: 4_096,
+  },
+  "anthropic:haiku": {
+    maxOutputTokens: 4_096,
+  },
+  "openai:chatgpt-4o-latest": {
+    maxOutputTokens: 16_384,
+  },
+  "openai:gpt-4o": {
+    maxOutputTokens: 16_384,
+  },
+  "openai:gpt-4o-mini": {
+    maxOutputTokens: 16_384,
+  },
+  "openai:gpt-4o-structured": {
+    maxOutputTokens: 16_384,
+  },
+  "openai:gpt-4o-mini-structured": {
+    maxOutputTokens: 16_384,
+  },
+  "openai:o1": {
+    maxOutputTokens: 100_000,
+  },
+  "openai:o1-mini": {
+    maxOutputTokens: 65_536,
+  },
+  "openai:o3-mini": {
+    maxOutputTokens: 100_000,
+  },
+  "google:pro": {
+    maxOutputTokens: 8_192,
+  },
+  "google:flash": {
+    maxOutputTokens: 8_192,
+  },
+  "google:flash2": {
+    maxOutputTokens: 8_192,
+  },
+  "google:flash2lite": {
+    maxOutputTokens: 8_192,
+  },
+  "google:flash2-search": {
+    maxOutputTokens: 8_192,
+  },
+  "google:flash2thinking": {
+    maxOutputTokens: 8_192,
+  },
+  "google:pro2": {
+    maxOutputTokens: 8_192,
+  },
+  "google:gemini-experimental": {
+    maxOutputTokens: 8_192,
+  },
+  "deepseek:deepseek-chat": {
+    maxOutputTokens: 8_000,
+  },
+  "deepseek:deepseek-reasoner": {
+    maxOutputTokens: 8_000,
+  },
+  "openrouter:llama-3-70-b": {
+    maxOutputTokens: 4_096,
+  },
+  "openrouter:llama-3.3-70b-instruct": {
+    maxOutputTokens: 4_096,
+  },
+  "openrouter:deepseek-v3": {
+    maxOutputTokens: 8_000,
+  },
+  "openrouter:deepseek-r1": {
+    maxOutputTokens: 8_000,
+  },
+  "ollama:llama3.1": {
+    maxOutputTokens: 4_096,
+  },
+  "ollama:deepseek-r1:1.5b": {
+    maxOutputTokens: 8_000,
+  },
+};
