@@ -57,6 +57,7 @@ const anthropic = customProvider({
 
 const openai = customProvider({
   languageModels: {
+    "chatgpt-4o-latest": originalOpenAi("chatgpt-4o-latest"),
     "gpt-4o": originalOpenAi("gpt-4o-2024-11-20"),
     "gpt-4o-mini": originalOpenAi("gpt-4o-mini"),
     "gpt-4o-structured": originalOpenAi("gpt-4o-2024-11-20", {
@@ -118,6 +119,7 @@ export const Models = [
   "anthropic:sonnet",
   "anthropic:opus",
   "anthropic:haiku",
+  "openai:chatgpt-4o-latest",
   "openai:gpt-4o",
   "openai:gpt-4o-mini",
   "openai:gpt-4o-structured",
