@@ -54,6 +54,7 @@
     "better-sqlite3": "^11.8.1",
     "cheerio": "^1.0.0",
     "diff": "^7.0.0",
+    "duck-duck-scrape": "^2.2.7",
     "ignore": "^7.0.3",
     "minimatch": "^10.0.1",
     "ollama-ai-provider": "^1.2.0",

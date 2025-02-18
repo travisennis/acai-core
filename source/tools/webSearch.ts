@@ -8,6 +8,7 @@ import {
 import { getJson } from "serpapi";
 import { z } from "zod";
 import type { SendData } from "./types.ts";
+import { SafeSearchType, search, type SearchResults } from "duck-duck-scrape";
 
 export const createWebSearchTools = ({
   model,
@@ -26,17 +27,12 @@ export const createWebSearchTools = ({
           data: `Searching the web for links with query: ${query}`,
         });
         try {
-          const response = await getJson({
-            engine: "google",
-            api_key: process.env.SERPAPI_API_KEY,
-            q: query,
-          });
-
+          const response = await searchSerp(query);
           sendData?.({
             event: "tool-completion",
             data: `Successfully retrieved search links for query: ${query}`,
           });
-          return formatSearchResults(response.organic_results);
+          return formatSerpResults(response);
         } catch (error) {
           sendData?.({
             event: "tool-error",
@@ -57,16 +53,15 @@ export const createWebSearchTools = ({
           event: "tool-init",
           data: `Searching the web for an answer with query: ${query}`,
         });
-        const { text, experimental_providerMetadata } = await generateText({
-          model: model,
-          temperature: 1.0,
-          prompt: query,
-        });
+        const { text, providerMetadata } = await searchWithGrounding(
+          model,
+          query,
+        );
         sendData?.({
           event: "tool-completion",
           data: `Successfully generated answer for query: ${query}`,
         });
-        const metadata = parseMetadata(experimental_providerMetadata);
+        const metadata = parseMetadata(providerMetadata);
         const sources = metadata.sources.map(
           (source) => `${source.title}\n${source.url}\n${source.snippet}`,
         );
@@ -76,10 +71,18 @@ export const createWebSearchTools = ({
   };
 };
 
-function parseMetadata(
-  experimental_providerMetadata: ProviderMetadata | undefined,
-) {
-  const metadata = experimental_providerMetadata?.google as
+export async function searchWithGrounding(model: LanguageModel, query: string) {
+  const result = await generateText({
+    model: model,
+    temperature: 1.0,
+    prompt: query,
+  });
+
+  return result;
+}
+
+export function parseMetadata(providerMetadata: ProviderMetadata | undefined) {
+  const metadata = providerMetadata?.google as
     | GoogleGenerativeAIProviderMetadata
     | undefined;
 
@@ -119,19 +122,22 @@ function parseMetadata(
   };
 }
 
-interface Sitelink {
+export interface Sitelink {
   title: string;
   link: string;
 }
 
-interface ResultItem {
+export interface ResultItem {
   position: number;
   title: string;
   link: string;
+  // biome-ignore lint/style/useNamingConvention: <explanation>
   redirect_link: string;
+  // biome-ignore lint/style/useNamingConvention: <explanation>
   displayed_link: string;
   favicon: string;
   snippet: string;
+  // biome-ignore lint/style/useNamingConvention: <explanation>
   snippet_highlighted_words: string[];
   sitelinks?: {
     inline?: Sitelink[];
@@ -141,15 +147,84 @@ interface ResultItem {
   date?: string;
 }
 
-function formatSearchResults(jsonData: ResultItem[]): string {
+export async function searchSerp(query: string): Promise<ResultItem[]> {
+  const response = await getJson({
+    engine: "google",
+    // biome-ignore lint/style/useNamingConvention: <explanation>
+    api_key: process.env.SERPAPI_API_KEY,
+    q: query,
+  });
+  return response.organic_results;
+}
+
+export interface NormalizedResults {
+  title: string;
+  source: string;
+  url: string;
+  description: string;
+}
+
+export function normalizeSerpResults(results: ResultItem[]) {
+  const response: NormalizedResults[] = [];
+  for (const item of results) {
+    response.push({
+      title: item.title,
+      source: item.source,
+      url: item.link,
+      description: item.snippet,
+    });
+  }
+  return response;
+}
+
+export function formatSerpResults(results: ResultItem[]): string {
   try {
     let output = "";
 
-    for (const item of jsonData) {
+    for (const item of results) {
       output += `Title: ${item.title}\n`;
       output += `Source: ${item.source}\n`;
       output += `Link: ${item.link}\n`;
       output += `Snippet: ${item.snippet}\n`;
+      output += "\n"; // Add a newline between results
+    }
+
+    return output;
+  } catch (error) {
+    console.error("Error parsing JSON:", error);
+    return "Error: Could not parse JSON data.";
+  }
+}
+
+export async function searchDuckDuckGo(query: string) {
+  const searchResults = await search(query, {
+    safeSearch: SafeSearchType.STRICT,
+  });
+  return searchResults;
+}
+
+export function normalizeDuckDuckGoResults(result: SearchResults) {
+  const response: NormalizedResults[] = [];
+  for (const item of result.results) {
+    response.push({
+      title: item.title,
+      source: item.hostname,
+      url: item.url,
+      description: item.description,
+    });
+  }
+  return response;
+}
+
+export function formatDuckDuckGoResults(result: SearchResults) {
+  try {
+    let output = "";
+
+    for (const item of result.results) {
+      output += `Title: ${item.title}\n`;
+      output += `Source: ${item.hostname}\n`;
+      output += `Link: ${item.url}\n`;
+      output += `Snippet: ${item.description}\n`;
       output += "\n"; // Add a newline between results
     }
 
