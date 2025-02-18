@@ -3,18 +3,25 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { SendData } from "./types.ts";
 
+export interface Config {
+  build: string | undefined;
+  lint: string | undefined;
+  format: string | undefined;
+  test: string | undefined;
+}
+
 export const createCodeTools = ({
   baseDir,
+  config,
   sendData,
-}: { baseDir: string; sendData?: SendData }) => {
+}: { baseDir: string; config?: Config; sendData?: SendData }) => {
   return {
     buildCode: tool({
       description:
         "Executes the build command for the current code base and returns the output.",
       parameters: z.object({}),
       execute: async () => {
-        const config = await readProjectConfig();
-        const buildCommand = config.build || "npm run build";
+        const buildCommand = config?.build || "npm run build";
         if (sendData) {
           sendData({
             event: "tool-init",
@@ -22,7 +29,7 @@ export const createCodeTools = ({
           });
         }
         try {
-          return asyncExec(buildCommand, baseDir);
+          return await asyncExec(buildCommand, baseDir);
         } catch (error) {
           return `Failed to execute build command: ${(error as Error).message}`;
         }
@@ -33,16 +40,15 @@ export const createCodeTools = ({
         "Lints the current code base and returns the results. This tool helps identify and report potential issues, style violations, or errors in the code, improving code quality and consistency.",
       parameters: z.object({}),
       execute: async () => {
-        const config = await readProjectConfig();
         if (sendData) {
           sendData({
             event: "tool-init",
             data: `Linting code in ${baseDir}`,
           });
         }
-        const lintCommand = config.lint || "npm run lint";
+        const lintCommand = config?.lint || "npm run lint";
         try {
-          return asyncExec(lintCommand, baseDir);
+          return await asyncExec(lintCommand, baseDir);
         } catch (error) {
           return `Failed to execute lint command: ${(error as Error).message}`;
         }
@@ -53,16 +59,15 @@ export const createCodeTools = ({
         "Executes the 'format' command on the current code base and returns the results. This reports style and formatting issues with the code base.",
       parameters: z.object({}),
       execute: async () => {
-        const config = await readProjectConfig();
         if (sendData) {
           sendData({
             event: "tool-init",
             data: `Formatting code in ${baseDir}`,
           });
         }
-        const formatCommand = config.format || "npm run format";
+        const formatCommand = config?.format || "npm run format";
         try {
-          return asyncExec(formatCommand, baseDir);
+          return await asyncExec(formatCommand, baseDir);
         } catch (error) {
           return `Failed to execute format command: ${(error as Error).message}`;
         }
@@ -73,16 +78,15 @@ export const createCodeTools = ({
         "Executes the 'test' command on the current code base to run unit tests and return the results.",
       parameters: z.object({}),
       execute: async () => {
-        const config = await readProjectConfig();
         if (sendData) {
           sendData({
             event: "tool-init",
             data: `Running unit tests in ${baseDir}`,
           });
         }
-        const testCommand = config.test || "npm run test";
+        const testCommand = config?.test || "npm run test";
         try {
-          return asyncExec(testCommand, baseDir);
+          return await asyncExec(testCommand, baseDir);
         } catch (error) {
           return `Failed to execute test command: ${(error as Error).message}`;
         }
@@ -90,10 +94,6 @@ export const createCodeTools = ({
     }),
   };
 };
-
-function readProjectConfig(): Promise<any> {
-  return Promise.resolve({});
-}
 
 function asyncExec(command: string, cwd: string): Promise<string> {
   console.info(`Running ${command} in ${cwd}`);
