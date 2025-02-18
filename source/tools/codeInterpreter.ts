@@ -1,79 +1,42 @@
-import * as _crypto from "node:crypto";
-import * as _fs from "node:fs";
-import * as _http from "node:http";
-import * as _https from "node:https";
-import * as _os from "node:os";
-import * as _process from "node:process";
+import _crypto from "node:crypto";
+import _fs from "node:fs";
+import _http from "node:http";
+import _https from "node:https";
+import _os from "node:os";
+import _process from "node:process";
 import { runInNewContext } from "node:vm";
 import { tool } from "ai";
 import { z } from "zod";
 import type { SendData } from "./types.ts";
 
-export enum InterpreterPermission {
-  FS = "fs",
-  NET = "net",
-  OS = "os",
-  CRYPTO = "crypto",
-  PROCESS = "process",
-}
+type InterpreterPermission = "fs" | "net" | "os" | "crypto" | "process";
 
-function codeInterpreterJavascript(
+export function jsCodeInterpreter(
   code: string,
   permissions: readonly InterpreterPermission[],
-  sendData?: SendData,
 ) {
   const context: Record<string, any> = { console };
 
-  if (permissions.includes(InterpreterPermission.FS)) {
+  if (permissions.includes("fs")) {
     context.fs = _fs;
   }
-  if (permissions.includes(InterpreterPermission.NET)) {
+  if (permissions.includes("net")) {
     context.http = _http;
     context.https = _https;
   }
-  if (permissions.includes(InterpreterPermission.OS)) {
+  if (permissions.includes("os")) {
     context.os = _os;
   }
-  if (permissions.includes(InterpreterPermission.CRYPTO)) {
+  if (permissions.includes("crypto")) {
     context.crypto = _crypto;
   }
-  if (permissions.includes(InterpreterPermission.PROCESS)) {
+  if (permissions.includes("process")) {
     context.process = _process;
   }
 
   const options = { timeout: 120 * 1000 }; // Timeout in milliseconds
 
-  try {
-    sendData?.({
-      event: "tool-init",
-      data: "Initializing code interpreter environment",
-    });
-
-    const result = runInNewContext(
-      `(function() { ${code} })()`,
-      context,
-      options,
-    );
-
-    sendData?.({
-      event: "tool-completion",
-      data: "Code execution completed successfully",
-    });
-
-    return result;
-  } catch (err) {
-    const errorMessage =
-      (err as Error).name === "TimeoutError"
-        ? "Script timed out"
-        : `Error: ${err}`;
-
-    sendData?.({
-      event: "tool-error",
-      data: errorMessage,
-    });
-
-    return errorMessage;
-  }
+  return runInNewContext(`(function() { ${code} })()`, context, options);
 }
 
 export const createCodeInterpreterTool = ({
@@ -91,7 +54,33 @@ export const createCodeInterpreterTool = ({
         code: z.string().describe("Javascript code to be executed."),
       }),
       execute: ({ code }: { code: string }) => {
-        return codeInterpreterJavascript(code, permissions ?? [], sendData);
+        try {
+          sendData?.({
+            event: "tool-init",
+            data: "Initializing code interpreter environment",
+          });
+
+          const result = jsCodeInterpreter(code, permissions ?? []);
+
+          sendData?.({
+            event: "tool-completion",
+            data: "Code execution completed successfully",
+          });
+
+          return result;
+        } catch (err) {
+          const errorMessage =
+            (err as Error).name === "TimeoutError"
+              ? "Script timed out"
+              : `Error: ${err}`;
+
+          sendData?.({
+            event: "tool-error",
+            data: errorMessage,
+          });
+
+          return errorMessage;
+        }
       },
     }),
   };

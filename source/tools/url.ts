@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import * as cheerio from "cheerio";
+import { load, type CheerioAPI } from "cheerio";
 import { z } from "zod";
 import type { SendData } from "./types.ts";
 
@@ -17,7 +17,7 @@ export const createUrlTools = (options: { sendData?: SendData } = {}) => {
             event: "tool-init",
             data: `Reading URL for ${url}`,
           });
-          return loadUrl(url);
+          return readUrl(url);
         } catch (error) {
           sendData?.({
             event: "tool-error",
@@ -30,13 +30,14 @@ export const createUrlTools = (options: { sendData?: SendData } = {}) => {
   };
 };
 
-export async function loadUrl(url: string): Promise<string> {
+export async function readUrl(url: string): Promise<string> {
   try {
     const apiKey = process.env.JINA_READER_API_KEY;
     const readUrl = `https://r.jina.ai/${url}`;
     const response = await fetch(readUrl, {
       method: "GET",
       headers: {
+        // biome-ignore lint/style/useNamingConvention: <explanation>
         Authorization: `Bearer ${apiKey}`,
       },
     });
@@ -59,7 +60,7 @@ export async function loadUrl(url: string): Promise<string> {
     const contentType = response.headers.get("content-type");
 
     if (contentType?.includes("text/html")) {
-      const cleaner = HTMLCleaner.new(await response.text());
+      const cleaner = HtmlCleaner.new(await response.text());
       const processedText = cleaner.clean();
       return processedText;
     }
@@ -69,9 +70,9 @@ export async function loadUrl(url: string): Promise<string> {
   }
 }
 
-export class HTMLCleaner {
-  static new(html: string): HTMLCleaner {
-    return new HTMLCleaner(html);
+export class HtmlCleaner {
+  static new(html: string): HtmlCleaner {
+    return new HtmlCleaner(html);
   }
 
   private html: string;
@@ -90,7 +91,7 @@ export class HTMLCleaner {
   clean(options?: { simplify?: boolean; empty?: boolean }): string {
     const { simplify = true, empty = true } = options ?? {};
 
-    const $ = cheerio.load(this.html);
+    const $ = load(this.html);
 
     // Remove scripts, styles, and comments
     this.removeUnnecessaryElements($);
@@ -113,7 +114,7 @@ export class HTMLCleaner {
   /**
    * Removes scripts, styles, and comments from HTML
    */
-  private removeUnnecessaryElements($: cheerio.CheerioAPI): void {
+  private removeUnnecessaryElements($: CheerioAPI): void {
     // Remove all script tags
     $("script").remove();
 
@@ -157,7 +158,7 @@ export class HTMLCleaner {
   /**
    * Simplifies HTML structure by merging redundant tags
    */
-  private simplifyStructure($: cheerio.CheerioAPI): void {
+  private simplifyStructure($: CheerioAPI): void {
     // Merge nested divs
     $("div div").each((_, element) => {
       const $element = $(element);
@@ -183,7 +184,7 @@ export class HTMLCleaner {
   /**
    * Removes empty elements from HTML
    */
-  private removeEmptyElements($: cheerio.CheerioAPI): void {
+  private removeEmptyElements($: CheerioAPI): void {
     $(":empty").remove();
   }
 }
