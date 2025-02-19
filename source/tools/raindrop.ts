@@ -12,12 +12,18 @@ interface ApiResponse {
 }
 
 function isApiResponse(data: unknown): data is ApiResponse {
-  if (!data || typeof data !== "object") return false;
+  if (!data || typeof data !== "object") {
+    return false;
+  }
 
-  if (!("items" in data)) return false;
+  if (!("items" in data)) {
+    return false;
+  }
 
   const { items } = data as { items: unknown };
-  if (!Array.isArray(items)) return false;
+  if (!Array.isArray(items)) {
+    return false;
+  }
 
   return items.every(
     (item) =>
@@ -55,57 +61,17 @@ export const createRaindropTools = ({
           event: "tool-init",
           data: `Searching bookmarks with query: ${search}${created ? ` and created date: ${created}` : ""}`,
         });
-
-        const collectionId = "0";
-        let searchFilter = search;
-        if (created) {
-          searchFilter += ` created:${created}`;
-        }
-        const encodedSearch = encodeURIComponent(searchFilter);
-        const searchUrl = `https://api.raindrop.io/rest/v1/raindrops/${collectionId}?search=${encodedSearch}`;
-
         try {
-          const response = await fetch(searchUrl, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (!response.ok) {
-            const errorMessage = `HTTP error! status: ${response.status}`;
-            sendData?.({
-              event: "tool-error",
-              data: errorMessage,
-            });
-            return errorMessage;
-          }
-
-          const data = await response.json();
-
-          if (!isApiResponse(data)) {
-            const errorMessage = "Invalid API response format.";
-            sendData?.({
-              event: "tool-error",
-              data: errorMessage,
-            });
-            return errorMessage;
-          }
-
-          const parsedData = data.items.map((item) => ({
-            title: item.title,
-            link: item.link,
-          }));
+          const result = await searchRaindrop({ search, created, apiKey });
 
           sendData?.({
             event: "tool-completion",
-            data: `Found ${parsedData.length} bookmarks`,
+            data: `Found ${result.length} bookmarks`,
           });
 
-          return JSON.stringify(parsedData);
+          return result;
         } catch (error) {
-          const errorMessage = `Error fetching data: ${error}`;
+          const errorMessage = `Error fetching data: ${(error as Error).message}`;
           sendData?.({
             event: "tool-error",
             data: errorMessage,
@@ -116,3 +82,50 @@ export const createRaindropTools = ({
     }),
   };
 };
+
+export async function searchRaindrop({
+  search,
+  created,
+  apiKey,
+}: { search: string; created?: string; apiKey: string }) {
+  const collectionId = "0";
+  let searchFilter = search;
+  if (created) {
+    searchFilter += ` created:${created}`;
+  }
+  const encodedSearch = encodeURIComponent(searchFilter);
+  const searchUrl = `https://api.raindrop.io/rest/v1/raindrops/${collectionId}?search=${encodedSearch}`;
+
+  try {
+    const response = await fetch(searchUrl, {
+      method: "GET",
+      headers: {
+        // biome-ignore lint/style/useNamingConvention: <explanation>
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+
+    if (!isApiResponse(data)) {
+      const errorMessage = "Invalid API response format.";
+      throw new Error(errorMessage);
+    }
+
+    const parsedData = data.items.map((item) => ({
+      title: item.title,
+      link: item.link,
+    }));
+
+    return JSON.stringify(parsedData);
+  } catch (error) {
+    const errorMessage = `Error fetching data: ${(error as Error).message}`;
+    throw new Error(errorMessage);
+  }
+}
