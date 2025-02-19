@@ -5,6 +5,8 @@ import type { SendData } from "./types.ts";
 interface Bookmark {
   title: string;
   link: string;
+  domain: string;
+  excerpt: string;
 }
 
 interface ApiResponse {
@@ -69,7 +71,7 @@ export const createRaindropTools = ({
             data: `Found ${result.length} bookmarks`,
           });
 
-          return result;
+          return JSON.stringify(result);
         } catch (error) {
           const errorMessage = `Error fetching data: ${(error as Error).message}`;
           sendData?.({
@@ -121,9 +123,11 @@ export async function searchRaindrop({
     const parsedData = data.items.map((item) => ({
       title: item.title,
       link: item.link,
+      domain: item.domain,
+      excerpt: item.excerpt,
     }));
 
-    return JSON.stringify(parsedData);
+    return parsedData;
   } catch (error) {
     const errorMessage = `Error fetching data: ${(error as Error).message}`;
     throw new Error(errorMessage);
