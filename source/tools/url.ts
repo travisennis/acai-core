@@ -46,6 +46,7 @@ export async function readUrl(url: string): Promise<string> {
       const data = await response.text();
       return data;
     }
+    console.error(`Failed to fetch Jina: ${response.statusText}`);
   } catch (error) {
     console.error(`Failed to fetch Jina: ${(error as Error).message}`);
   }
