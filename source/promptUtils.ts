@@ -38,7 +38,7 @@ const codeBlockExtensions: Record<string, string> = {
   txt: "text",
 };
 
-export function formatFile(
+export function formatOutput(
   file: string,
   content: string,
   format: FormatType,
