@@ -1,6 +1,6 @@
 {
   "name": "@travisennis/acai-core",
-  "version": "0.0.27",
+  "version": "0.0.28",
   "description": "The core SDK for acai. Used by acai-ts, acai-web, and acai-language-server.",
   "type": "module",
   "exports": {
@@ -22,7 +22,10 @@
     }
   },
   "packageManager": "npm",
-  "keywords": ["ai", "llm"],
+  "keywords": [
+    "ai",
+    "llm"
+  ],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
