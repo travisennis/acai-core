@@ -1,3 +1,4 @@
+// biome-ignore lint/performance/noBarrelFile: <explanation>
 export {
   Models,
   type ModelName,
@@ -10,6 +11,7 @@ export {
   extractXml,
   removeAllLineBreaks,
   removeHtmLtags,
+  formatFile,
 } from "./promptUtils.ts";
 export { ObjectGenerator } from "./objectGenerator.ts";
 export { TokenTracker } from "./tokenTracker.ts";
