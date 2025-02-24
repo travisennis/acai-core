@@ -45,9 +45,9 @@ const anthropic = customProvider({
     sonnet: createAnthropic({
       headers: {
         "anthropic-version": "2023-06-01",
-        "anthropic-beta": "max-tokens-3-5-sonnet-2024-07-15",
+        "anthropic-beta": "output-128k-2025-02-19",
       },
-    })("claude-3-5-sonnet-20241022", {
+    })("claude-3-7-sonnet-20250219", {
       cacheControl: true,
     }),
     haiku: originalAnthropic("claude-3-5-haiku-20241022"),
@@ -170,7 +170,7 @@ export function languageModel(input: ModelName) {
 
 export const ModelConfig: Record<ModelName, { maxOutputTokens: number }> = {
   "anthropic:sonnet": {
-    maxOutputTokens: 8_192,
+    maxOutputTokens: 128_000,
   },
   "anthropic:opus": {
     maxOutputTokens: 4_096,
