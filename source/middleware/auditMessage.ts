@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { LanguageModelV1Middleware, LanguageModelV1StreamPart } from "ai";
+import type {
+  LanguageModelV1Middleware,
+  LanguageModelV1Prompt,
+  LanguageModelV1StreamPart,
+} from "ai";
 
 const checkAndRolloverFile = async (filePath: string): Promise<void> => {
   try {
@@ -45,22 +49,49 @@ const checkAndRolloverFile = async (filePath: string): Promise<void> => {
   }
 };
 
+interface AuditRecord {
+  model: string;
+  app: string;
+  messages: LanguageModelV1Prompt;
+  timestamp: number;
+}
+
 const appendToFile = async (
   filePath: string,
-  content: string,
+  content: AuditRecord,
 ): Promise<void> => {
   try {
     // Ensure directory exists
     await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
     await checkAndRolloverFile(filePath);
-    await fs.promises.appendFile(filePath, `${content}\n`);
+    await fs.promises.appendFile(filePath, `${JSON.stringify(content)}\n`);
   } catch (error) {
     console.error("Error writing to audit file:", error);
     throw error;
   }
 };
 
-export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
+const writeFile = async (
+  filePath: string,
+  content: AuditRecord,
+): Promise<void> => {
+  try {
+    // Ensure directory exists
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(
+      filePath,
+      `${JSON.stringify(content, null, 2)}`,
+    );
+  } catch (error) {
+    console.error("Error writing audit file:", error);
+    throw error;
+  }
+};
+
+export const auditMessage = ({
+  path = "messages.jsonl",
+  app = "default",
+}: { path: string; app: string }) => {
   const middleware: LanguageModelV1Middleware = {
     wrapGenerate: async ({ doGenerate, params, model }) => {
       try {
@@ -68,12 +99,24 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
 
         const msg = {
           model: model.modelId,
-          prompt: params.prompt,
-          response: result.text,
+          app,
+          messages: [...params.prompt].concat({
+            role: "assistant",
+            content: [
+              {
+                type: "text",
+                text: result.text ?? "no response",
+              },
+            ],
+          }),
           timestamp: Date.now(),
         };
 
-        await appendToFile(path, JSON.stringify(msg));
+        if (path.endsWith("jsonl")) {
+          await appendToFile(path, msg);
+        } else {
+          writeFile(path, msg);
+        }
 
         return result;
       } catch (error) {
@@ -103,12 +146,24 @@ export const auditMessage = ({ path = "messages.jsonl" }: { path: string }) => {
           try {
             const msg = {
               model: model.modelId,
-              prompt: params.prompt,
-              response: generatedText,
+              app,
+              messages: [...params.prompt].concat({
+                role: "assistant",
+                content: [
+                  {
+                    type: "text",
+                    text: generatedText,
+                  },
+                ],
+              }),
               timestamp: Date.now(),
             };
 
-            await appendToFile(path, JSON.stringify(msg));
+            if (path.endsWith("jsonl")) {
+              await appendToFile(path, msg);
+            } else {
+              writeFile(path, msg);
+            }
           } catch (error) {
             console.error("Error in transform stream flush:", error);
             throw error;
