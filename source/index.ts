@@ -15,3 +15,4 @@ export {
 } from "./promptUtils.ts";
 export { ObjectGenerator } from "./objectGenerator.ts";
 export { TokenTracker } from "./tokenTracker.ts";
+export { analyzeTypeScriptFile, outputFileStructure } from "./codeMap.ts";
