@@ -4,10 +4,10 @@ import { z } from "zod";
 import type { SendData } from "./types.ts";
 
 export interface Config {
-  build: string | undefined;
-  lint: string | undefined;
-  format: string | undefined;
-  test: string | undefined;
+  build?: string | undefined;
+  lint?: string | undefined;
+  format?: string | undefined;
+  test?: string | undefined;
 }
 
 export const createCodeTools = ({
