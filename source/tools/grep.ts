@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 import type { SendData } from "./types.ts";
 
 export const createGrepTools = (options: { sendData?: SendData } = {}) => {
@@ -14,8 +14,13 @@ export const createGrepTools = (options: { sendData?: SendData } = {}) => {
         recursive: z
           .boolean()
           .optional()
+          .default(true)
           .describe("Whether to search recursively"),
-        ignoreCase: z.boolean().optional().describe("Whether to ignore case"),
+        ignoreCase: z
+          .boolean()
+          .optional()
+          .default(false)
+          .describe("Whether to ignore case"),
         filePattern: z
           .string()
           .optional()
@@ -28,8 +33,8 @@ export const createGrepTools = (options: { sendData?: SendData } = {}) => {
       execute: ({
         pattern,
         path,
-        recursive = true,
-        ignoreCase = false,
+        recursive,
+        ignoreCase,
         filePattern,
         contextLines,
       }) => {
@@ -38,12 +43,14 @@ export const createGrepTools = (options: { sendData?: SendData } = {}) => {
             event: "tool-init",
             data: `Searching for "${pattern}" in ${path}`,
           });
-          return grepFiles(pattern, path, {
-            recursive,
-            ignoreCase,
-            filePattern,
-            contextLines,
-          });
+          return Promise.resolve(
+            grepFiles(pattern, path, {
+              recursive,
+              ignoreCase,
+              filePattern,
+              contextLines,
+            }),
+          );
         } catch (error) {
           sendData?.({
             event: "tool-error",
