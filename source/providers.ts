@@ -50,6 +50,14 @@ const anthropic = customProvider({
     })("claude-3-7-sonnet-20250219", {
       cacheControl: true,
     }),
+    sonnet35: createAnthropic({
+      headers: {
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "max-tokens-3-5-sonnet-2024-07-15",
+      },
+    })("claude-3-5-sonnet-20241022", {
+      cacheControl: true,
+    }),
     haiku: originalAnthropic("claude-3-5-haiku-20241022"),
   },
   fallbackProvider: originalAnthropic,
@@ -117,6 +125,7 @@ const registry = createProviderRegistry({
 
 export const Models = [
   "anthropic:sonnet",
+  "anthropic:sonnet35",
   "anthropic:opus",
   "anthropic:haiku",
   "openai:chatgpt-4o-latest",
@@ -174,6 +183,10 @@ export const ModelConfig: Record<
 > = {
   "anthropic:sonnet": {
     maxOutputTokens: 128_000,
+    promptFormat: "xml",
+  },
+  "anthropic:sonnet35": {
+    maxOutputTokens: 8_096,
     promptFormat: "xml",
   },
   "anthropic:opus": {
