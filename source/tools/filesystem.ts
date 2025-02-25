@@ -557,10 +557,12 @@ export const createFileSystemTools = async ({
         "Searches through all subdirectories from the starting path. The search " +
         "is case-insensitive and matches partial names. Returns full paths to all " +
         "matching items. Great for finding files when you don't know their exact location. " +
-        "Only searches within allowed directories.",
+        "Only searches within allowed directories. Use this tool when you need to find files by name patterns.",
       parameters: z.object({
-        path: z.string(),
-        pattern: z.string(),
+        path: z.string().describe("The base path to search in."),
+        pattern: z
+          .string()
+          .describe('Supports glob patterns like "**/*.js" or "src/**/*.ts"'),
         excludePatterns: z.array(z.string()).optional().default([]),
       }),
       execute: async ({ path, pattern, excludePatterns }) => {
@@ -676,9 +678,9 @@ export const createFileSystemTools = async ({
         "Get a detailed listing of all files and directories in a specified path. " +
         "Results clearly distinguish between files and directories with [FILE] and [DIR] " +
         "prefixes. This tool is essential for understanding directory structure and " +
-        "finding specific files within a directory. Only works within allowed directories.",
+        "finding specific files within a directory. Only works within allowed directories. Use this tool when you need to see the contents of a directory.",
       parameters: z.object({
-        path: z.string().describe("Absolute path"),
+        path: z.string().describe("The path."),
       }),
       execute: async ({ path }) => {
         try {
@@ -706,9 +708,9 @@ export const createFileSystemTools = async ({
 
     directoryTree: tool({
       description:
-        "Get a directory tree structure for a given path. This tool will ignore any directories or files listed in a .gitignore file.",
+        "Get a directory tree structure for a given path. This tool will ignore any directories or files listed in a .gitignore file. Use this tool when you need to see a complete directory tree for a project. This can be used to get an understanding of how a project is organized and what files are available before using other file system tools.",
       parameters: z.object({
-        path: z.string().describe("Absolute path"),
+        path: z.string().describe("The path."),
       }),
       execute: async ({ path }) => {
         try {
