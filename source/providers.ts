@@ -179,118 +179,150 @@ export function languageModel(input: ModelName) {
 
 export const ModelConfig: Record<
   ModelName,
-  { maxOutputTokens: number; promptFormat: "xml" | "markdown" | "bracket" }
+  {
+    maxOutputTokens: number;
+    promptFormat: "xml" | "markdown" | "bracket";
+    reasoningModel: boolean;
+  }
 > = {
   "anthropic:sonnet": {
     maxOutputTokens: 128_000,
     promptFormat: "xml",
+    reasoningModel: true,
   },
   "anthropic:sonnet35": {
     maxOutputTokens: 8_096,
     promptFormat: "xml",
+    reasoningModel: false,
   },
   "anthropic:opus": {
     maxOutputTokens: 4_096,
     promptFormat: "xml",
+    reasoningModel: false,
   },
   "anthropic:haiku": {
     maxOutputTokens: 4_096,
     promptFormat: "xml",
+    reasoningModel: false,
   },
   "openai:chatgpt-4o-latest": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "openai:gpt-4o": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "openai:gpt-4o-mini": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "openai:gpt-4o-structured": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "openai:gpt-4o-mini-structured": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "openai:o1": {
     maxOutputTokens: 100_000,
     promptFormat: "markdown",
+    reasoningModel: true,
   },
   "openai:o1-mini": {
     maxOutputTokens: 65_536,
     promptFormat: "markdown",
+    reasoningModel: true,
   },
   "openai:o3-mini": {
     maxOutputTokens: 100_000,
     promptFormat: "markdown",
+    reasoningModel: true,
   },
   "google:pro": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "google:flash": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "google:flash2": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "google:flash2lite": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "google:flash2-search": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "google:flash2thinking": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: true,
   },
   "google:pro2": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "google:gemini-experimental": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "deepseek:deepseek-chat": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
+    reasoningModel: false,
   },
   "deepseek:deepseek-reasoner": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
+    reasoningModel: true,
   },
   "openrouter:llama-3-70-b": {
     maxOutputTokens: 4_096,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "openrouter:llama-3.3-70b-instruct": {
     maxOutputTokens: 4_096,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "openrouter:deepseek-v3": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
+    reasoningModel: false,
   },
   "openrouter:deepseek-r1": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
+    reasoningModel: true,
   },
   "ollama:llama3.1": {
     maxOutputTokens: 4_096,
     promptFormat: "markdown",
+    reasoningModel: false,
   },
   "ollama:deepseek-r1:1.5b": {
     maxOutputTokens: 8_000,
     promptFormat: "markdown",
+    reasoningModel: true,
   },
 };
