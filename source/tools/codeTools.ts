@@ -98,15 +98,30 @@ export const createCodeTools = ({
 function asyncExec(command: string, cwd: string): Promise<string> {
   console.info(`Running ${command} in ${cwd}`);
   const { promise, resolve, reject } = Promise.withResolvers<string>();
+
   exec(command, { cwd }, (error, stdout, stderr) => {
     if (error) {
-      resolve(`Command ${command} execution in ${cwd}: ${error.message}`);
+      // Create a more detailed error object
+      const errorInfo = {
+        command,
+        cwd,
+        code: error.code,
+        signal: error.signal,
+        message: error.message,
+        stdout,
+        stderr,
+      };
+      console.dir(errorInfo);
+      reject(errorInfo);
       return;
     }
-    if (stderr) {
-      console.error(`Command ${command} stderr ${cwd}: ${stderr}`);
-      reject(stderr);
+
+    // Some commands output to stderr but don't actually fail
+    // Only consider stderr as an error if you want to be strict
+    if (stderr && stderr.trim() !== "") {
+      console.warn(`Command produced stderr (${command} in ${cwd}): ${stderr}`);
     }
+
     resolve(stdout);
   });
   return promise;
