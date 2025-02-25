@@ -168,86 +168,116 @@ export function languageModel(input: ModelName) {
   return registry.languageModel(input);
 }
 
-export const ModelConfig: Record<ModelName, { maxOutputTokens: number }> = {
+export const ModelConfig: Record<
+  ModelName,
+  { maxOutputTokens: number; promptFormat: "xml" | "markdown" | "bracket" }
+> = {
   "anthropic:sonnet": {
     maxOutputTokens: 128_000,
+    promptFormat: "xml",
   },
   "anthropic:opus": {
     maxOutputTokens: 4_096,
+    promptFormat: "xml",
   },
   "anthropic:haiku": {
     maxOutputTokens: 4_096,
+    promptFormat: "xml",
   },
   "openai:chatgpt-4o-latest": {
     maxOutputTokens: 16_384,
+    promptFormat: "markdown",
   },
   "openai:gpt-4o": {
     maxOutputTokens: 16_384,
+    promptFormat: "markdown",
   },
   "openai:gpt-4o-mini": {
     maxOutputTokens: 16_384,
+    promptFormat: "markdown",
   },
   "openai:gpt-4o-structured": {
     maxOutputTokens: 16_384,
+    promptFormat: "markdown",
   },
   "openai:gpt-4o-mini-structured": {
     maxOutputTokens: 16_384,
+    promptFormat: "markdown",
   },
   "openai:o1": {
     maxOutputTokens: 100_000,
+    promptFormat: "markdown",
   },
   "openai:o1-mini": {
     maxOutputTokens: 65_536,
+    promptFormat: "markdown",
   },
   "openai:o3-mini": {
     maxOutputTokens: 100_000,
+    promptFormat: "markdown",
   },
   "google:pro": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "google:flash": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "google:flash2": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "google:flash2lite": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "google:flash2-search": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "google:flash2thinking": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "google:pro2": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "google:gemini-experimental": {
     maxOutputTokens: 8_192,
+    promptFormat: "markdown",
   },
   "deepseek:deepseek-chat": {
     maxOutputTokens: 8_000,
+    promptFormat: "bracket",
   },
   "deepseek:deepseek-reasoner": {
     maxOutputTokens: 8_000,
+    promptFormat: "bracket",
   },
   "openrouter:llama-3-70-b": {
     maxOutputTokens: 4_096,
+    promptFormat: "markdown",
   },
   "openrouter:llama-3.3-70b-instruct": {
     maxOutputTokens: 4_096,
+    promptFormat: "markdown",
   },
   "openrouter:deepseek-v3": {
     maxOutputTokens: 8_000,
+    promptFormat: "bracket",
   },
   "openrouter:deepseek-r1": {
     maxOutputTokens: 8_000,
+    promptFormat: "bracket",
   },
   "ollama:llama3.1": {
     maxOutputTokens: 4_096,
+    promptFormat: "markdown",
   },
   "ollama:deepseek-r1:1.5b": {
     maxOutputTokens: 8_000,
+    promptFormat: "markdown",
   },
 };
