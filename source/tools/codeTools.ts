@@ -96,11 +96,12 @@ export const createCodeTools = ({
 };
 
 function asyncExec(command: string, cwd: string): Promise<string> {
-  console.info(`Running ${command} in ${cwd}`);
   const { promise, resolve, reject } = Promise.withResolvers<string>();
 
   exec(command, { cwd }, (error, stdout, stderr) => {
-    if (error) {
+    // For lint, format, and similar commands, we want to return the output even if they exit with an error code
+    // These tools often exit with non-zero when they find issues, but that's their expected behavior
+    if (error && !(command.includes("lint") || command.includes("format"))) {
       // Create a more detailed error object
       const errorInfo = {
         command,
@@ -111,15 +112,19 @@ function asyncExec(command: string, cwd: string): Promise<string> {
         stdout,
         stderr,
       };
-      console.dir(errorInfo);
       reject(errorInfo);
       return;
     }
 
-    // Some commands output to stderr but don't actually fail
-    // Only consider stderr as an error if you want to be strict
+    // For lint/format commands that exit with error, or any command with stderr
     if (stderr && stderr.trim() !== "") {
-      console.warn(`Command produced stderr (${command} in ${cwd}): ${stderr}`);
+      // If we have stdout and stderr, combine them for more comprehensive output
+      if (stdout && stdout.trim() !== "") {
+        resolve(`${stdout}\n${stderr}`);
+        return;
+      }
+      resolve(stderr);
+      return;
     }
 
     resolve(stdout);
