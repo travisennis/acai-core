@@ -6,6 +6,7 @@ export * from "./hypothesisTesting.ts";
 export * from "./memory.ts";
 export * from "./raindrop.ts";
 export * from "./sequentialThinking.ts";
+export * from "./tauThink.ts";
 export * from "./types.ts";
 export * from "./url.ts";
 export * from "./webSearch.ts";
