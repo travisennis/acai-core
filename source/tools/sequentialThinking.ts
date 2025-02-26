@@ -111,7 +111,10 @@ class SequentialThinkingManager {
       }
 
       const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
+      this.sendData?.({
+        event: "tool-update",
+        data: `Thought:\n${formattedThought}`,
+      });
 
       this.sendData?.({
         event: "tool-completion",

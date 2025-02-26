@@ -66,9 +66,15 @@ class HypothesisTestingManager {
     } = testData;
 
     let statusLabel = "🧪 Test Pending";
-    if (status === "confirmed") statusLabel = "✅ Confirmed";
-    if (status === "refuted") statusLabel = "❌ Refuted";
-    if (status === "revised") statusLabel = "🔄 Revised";
+    if (status === "confirmed") {
+      statusLabel = "✅ Confirmed";
+    }
+    if (status === "refuted") {
+      statusLabel = "❌ Refuted";
+    }
+    if (status === "revised") {
+      statusLabel = "🔄 Revised";
+    }
 
     const header = `${statusLabel} ${testNumber}/${totalTests}`;
     const content = [
@@ -113,7 +119,10 @@ ${content
       this.testHistory.push(validatedInput);
 
       const formattedTest = this.formatTest(validatedInput);
-      console.error(formattedTest);
+      this.sendData?.({
+        event: "tool-update",
+        data: `Test:\n${formattedTest}`,
+      });
 
       this.sendData?.({
         event: "tool-completion",
