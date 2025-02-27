@@ -2,6 +2,7 @@
 export {
   Models,
   type ModelName,
+  ModelConfig,
   isSupportedModel,
   languageModel,
 } from "./providers.ts";
