@@ -183,146 +183,175 @@ export const ModelConfig: Record<
     maxOutputTokens: number;
     promptFormat: "xml" | "markdown" | "bracket";
     reasoningModel: boolean;
+    supportsToolCalling: boolean;
   }
 > = {
   "anthropic:sonnet": {
     maxOutputTokens: 128_000,
     promptFormat: "xml",
     reasoningModel: true,
+    supportsToolCalling: true,
   },
   "anthropic:sonnet35": {
     maxOutputTokens: 8_096,
     promptFormat: "xml",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "anthropic:opus": {
     maxOutputTokens: 4_096,
     promptFormat: "xml",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "anthropic:haiku": {
     maxOutputTokens: 4_096,
     promptFormat: "xml",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openai:chatgpt-4o-latest": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openai:gpt-4o": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openai:gpt-4o-mini": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openai:gpt-4o-structured": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openai:gpt-4o-mini-structured": {
     maxOutputTokens: 16_384,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openai:o1": {
     maxOutputTokens: 100_000,
     promptFormat: "markdown",
     reasoningModel: true,
+    supportsToolCalling: false,
   },
   "openai:o1-mini": {
     maxOutputTokens: 65_536,
     promptFormat: "markdown",
     reasoningModel: true,
+    supportsToolCalling: false,
   },
   "openai:o3-mini": {
     maxOutputTokens: 100_000,
     promptFormat: "markdown",
     reasoningModel: true,
+    supportsToolCalling: true,
   },
   "google:pro": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "google:flash": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "google:flash2": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "google:flash2lite": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "google:flash2-search": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "google:flash2thinking": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: true,
+    supportsToolCalling: true,
   },
   "google:pro2": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "google:gemini-experimental": {
     maxOutputTokens: 8_192,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "deepseek:deepseek-chat": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "deepseek:deepseek-reasoner": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
     reasoningModel: true,
+    supportsToolCalling: false,
   },
   "openrouter:llama-3-70-b": {
     maxOutputTokens: 4_096,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openrouter:llama-3.3-70b-instruct": {
     maxOutputTokens: 4_096,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openrouter:deepseek-v3": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "openrouter:deepseek-r1": {
     maxOutputTokens: 8_000,
     promptFormat: "bracket",
     reasoningModel: true,
+    supportsToolCalling: false,
   },
   "ollama:llama3.1": {
     maxOutputTokens: 4_096,
     promptFormat: "markdown",
     reasoningModel: false,
+    supportsToolCalling: true,
   },
   "ollama:deepseek-r1:1.5b": {
     maxOutputTokens: 8_000,
     promptFormat: "markdown",
     reasoningModel: true,
+    supportsToolCalling: false,
   },
 };
