@@ -332,6 +332,131 @@ class PromptAnalyzer<I extends string, O extends string> {
   }
 }
 
+export class EnhancedPromptAnalyzer<I extends string, O extends string> {
+  private signature: Signature<I, O>;
+
+  constructor(signature: Signature<I, O>) {
+    this.signature = signature;
+  }
+
+  analyzeExamples(examples: Example<I, O>[]): void {
+    const labeledExamples = examples.filter((ex) => ex.output !== undefined);
+    if (labeledExamples.length === 0) {
+      return;
+    }
+
+    // Detect output format patterns
+    const formatType = this.detectOutputFormat(labeledExamples);
+    this.updateFormatInstructions(formatType);
+  }
+
+  private detectOutputFormat(
+    examples: Example<I, O>[],
+  ): "json" | "list" | "keyvalue" | "freeform" {
+    const outputs = examples.map((ex) => ex.output![this.signature.outputs[0]]);
+
+    // Check for JSON
+    if (outputs.some((o) => o?.trim().startsWith("{"))) {
+      return "json";
+    }
+
+    // Check for lists (bullets, commas)
+    if (outputs.some((o) => o?.includes("\n- ") || o?.match(/, |;/))) {
+      return "list";
+    }
+
+    // Check for key-value pairs
+    if (outputs.some((o) => o?.includes(": ") && o.split(": ").length > 1)) {
+      return "keyvalue";
+    }
+
+    return "freeform";
+  }
+
+  private updateFormatInstructions(formatType: string): void {
+    const formatInstruction = {
+      json: "Format your response as valid JSON.",
+      list: "Present items in a bulleted list.",
+      keyvalue: "Use 'key: value' format for each piece of information.",
+      freeform: "",
+    }[formatType];
+
+    if (formatInstruction) {
+      this.signature.instructions = [
+        this.signature.instructions,
+        formatInstruction,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
+  }
+}
+
+export class TaskAwarePromptAnalyzer<I extends string, O extends string> {
+  private signature: Signature<I, O>;
+
+  constructor(signature: Signature<I, O>) {
+    this.signature = signature;
+  }
+
+  analyzeExamples(examples: Example<I, O>[]): void {
+    const labeledExamples = examples.filter((ex) => ex.output !== undefined);
+    if (labeledExamples.length === 0) {
+      return;
+    }
+
+    // Detect task type
+    const taskType = this.inferTaskType(labeledExamples);
+    this.updateTaskMetadata(taskType);
+  }
+
+  private inferTaskType(
+    examples: Example<I, O>[],
+  ): "qa" | "classification" | "math" | "generation" {
+    const firstOutput = examples[0].output![this.signature.outputs[0]];
+
+    // Math: Numeric answers
+    if (
+      examples.every(
+        (ex) => !Number.isNaN(Number(ex.output![this.signature.outputs[0]])),
+      )
+    ) {
+      return "math";
+    }
+
+    // Classification: Limited discrete outputs
+    const uniqueOutputs = new Set(
+      examples.map((ex) => ex.output![this.signature.outputs[0]].toLowerCase()),
+    );
+    if (uniqueOutputs.size <= 5) {
+      return "classification";
+    }
+
+    // QA: Short answers to questions
+    if (
+      this.signature.inputs.includes("question" as I) &&
+      firstOutput.length < 50
+    ) {
+      return "qa";
+    }
+
+    return "generation";
+  }
+
+  private updateTaskMetadata(taskType: string): void {
+    const taskMetadata = {
+      qa: { verb: "Answer", style: "concise" },
+      classification: { verb: "Classify", style: "select from options" },
+      math: { verb: "Solve", style: "show calculations" },
+      generation: { verb: "Generate", style: "detailed" },
+    }[taskType];
+
+    if (taskMetadata) {
+      this.signature.description = `${taskMetadata.verb} the given ${taskType} problem.`;
+      this.signature.instructions = `Use ${taskMetadata.style} in your response.`;
+    }
+  }
+}
 // 4. DSPyProgram: Manages the workflow
 class Program<T extends string, O extends string> {
   private predictor: Predict<T, O>;
