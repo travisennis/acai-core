@@ -1,4 +1,4 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { tool } from "ai";
 import { z } from "zod";
 import type { SendData } from "./types.ts";
@@ -48,7 +48,7 @@ export const createCodeTools = ({
         }
         const lintCommand = config?.lint || "npm run lint";
         try {
-          return await asyncExec(lintCommand, baseDir);
+          return format(await asyncExec(lintCommand, baseDir));
         } catch (error) {
           return `Failed to execute lint command: ${(error as Error).message}`;
         }
@@ -67,7 +67,7 @@ export const createCodeTools = ({
         }
         const formatCommand = config?.format || "npm run format";
         try {
-          return await asyncExec(formatCommand, baseDir);
+          return format(await asyncExec(formatCommand, baseDir));
         } catch (error) {
           return `Failed to execute format command: ${(error as Error).message}`;
         }
@@ -86,7 +86,7 @@ export const createCodeTools = ({
         }
         const testCommand = config?.test || "npm run test";
         try {
-          return await asyncExec(testCommand, baseDir);
+          return format(await asyncExec(testCommand, baseDir));
         } catch (error) {
           return `Failed to execute test command: ${(error as Error).message}`;
         }
@@ -95,39 +95,44 @@ export const createCodeTools = ({
   };
 };
 
-function asyncExec(command: string, cwd: string): Promise<string> {
-  const { promise, resolve, reject } = Promise.withResolvers<string>();
+function format({
+  stdout,
+  stderr,
+}: { stdout: string; stderr: string; code: number }) {
+  return `${stdout}\n${stderr}`;
+}
 
-  exec(command, { cwd }, (error, stdout, stderr) => {
-    // For lint, format, and similar commands, we want to return the output even if they exit with an error code
-    // These tools often exit with non-zero when they find issues, but that's their expected behavior
-    if (error && !(command.includes("lint") || command.includes("format"))) {
-      // Create a more detailed error object
-      const errorInfo = {
-        command,
+function asyncExec(
+  command: string,
+  cwd: string,
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  const { promise, resolve } = Promise.withResolvers<{
+    stdout: string;
+    stderr: string;
+    code: number;
+  }>();
+  try {
+    execFile(
+      command,
+      {
         cwd,
-        code: error.code,
-        signal: error.signal,
-        message: error.message,
-        stdout,
-        stderr,
-      };
-      reject(errorInfo);
-      return;
-    }
-
-    // For lint/format commands that exit with error, or any command with stderr
-    if (stderr && stderr.trim() !== "") {
-      // If we have stdout and stderr, combine them for more comprehensive output
-      if (stdout && stdout.trim() !== "") {
-        resolve(`${stdout}\n${stderr}`);
-        return;
-      }
-      resolve(stderr);
-      return;
-    }
-
-    resolve(stdout);
-  });
+        timeout: 10 * 60 * 1000,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          const errorCode = typeof error.code === "number" ? error.code : 1;
+          resolve({
+            stdout: stdout || "",
+            stderr: stderr || "",
+            code: errorCode,
+          });
+        } else {
+          resolve({ stdout, stderr, code: 0 });
+        }
+      },
+    );
+  } catch (_error) {
+    resolve({ stdout: "", stderr: "", code: 1 });
+  }
   return promise;
 }
