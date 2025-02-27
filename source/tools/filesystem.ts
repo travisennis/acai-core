@@ -497,6 +497,10 @@ export const createFileSystemTools = async ({
         paths: z.array(z.string()),
       }),
       execute: async ({ paths }) => {
+        sendData?.({
+          event: "tool-init",
+          data: `Reading files: ${paths.join(", ")}`,
+        });
         const results = await Promise.all(
           paths.map(async (filePath) => {
             try {
@@ -539,6 +543,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path, edits, dryRun }) => {
         try {
+          sendData?.({
+            event: "tool-init",
+            data: `Editing file: ${path}`,
+          });
           const validPath = await validatePath(
             joinWorkingDir(path, workingDir),
             allowedDirectories,
@@ -567,6 +575,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path, pattern, excludePatterns }) => {
         try {
+          sendData?.({
+            event: "tool-init",
+            data: `Search for ${pattern}: ${path}`,
+          });
           const validPath = await validatePath(
             joinWorkingDir(path, workingDir),
             allowedDirectories,
@@ -600,6 +612,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path }) => {
         try {
+          sendData?.({
+            event: "tool-init",
+            data: `Get file info: ${path}`,
+          });
           const validPath = await validatePath(path, allowedDirectories);
           const info = await getFileStats(validPath);
           return Object.entries(info)
@@ -657,6 +673,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ source, destination }) => {
         try {
+          sendData?.({
+            event: "tool-init",
+            data: `Moving file from ${source} to ${destination}`,
+          });
           const validSourcePath = await validatePath(
             joinWorkingDir(source, workingDir),
             allowedDirectories,
@@ -684,6 +704,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path }) => {
         try {
+          sendData?.({
+            event: "tool-init",
+            data: `Listing directory: ${path}`,
+          });
           const validPath = await validatePath(
             joinWorkingDir(path, workingDir),
             allowedDirectories,
@@ -714,6 +738,10 @@ export const createFileSystemTools = async ({
       }),
       execute: async ({ path }) => {
         try {
+          sendData?.({
+            event: "tool-init",
+            data: `Listing directory tree: ${path}`,
+          });
           const validPath = await validatePath(
             joinWorkingDir(path, workingDir),
             allowedDirectories,
