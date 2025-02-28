@@ -29,7 +29,7 @@ export const createCodeTools = ({
           });
         }
         try {
-          return await asyncExec(buildCommand, baseDir);
+          return format(await asyncExec(buildCommand, baseDir));
         } catch (error) {
           return `Failed to execute build command: ${(error as Error).message}`;
         }
@@ -120,6 +120,7 @@ function asyncExec(
       },
       (error, stdout, stderr) => {
         if (error) {
+          console.error(error);
           const errorCode = typeof error.code === "number" ? error.code : 1;
           resolve({
             stdout: stdout || "",
@@ -131,7 +132,8 @@ function asyncExec(
         }
       },
     );
-  } catch (_error) {
+  } catch (error) {
+    console.error(error);
     resolve({ stdout: "", stderr: "", code: 1 });
   }
   return promise;
