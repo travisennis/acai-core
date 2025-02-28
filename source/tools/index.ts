@@ -1,4 +1,5 @@
 // biome-ignore lint/performance/noBarrelFile: <explanation>
+export * from "./arxivTools.ts";
 export * from "./codeInterpreter.ts";
 export * from "./codeTools.ts";
 export * from "./filesystem.ts";
