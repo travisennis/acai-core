@@ -1,5 +1,13 @@
-import fs from "node:fs";
-import path from "node:path";
+import { existsSync } from "node:fs";
+import {
+  appendFile,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  writeFile,
+} from "node:fs/promises";
+import { basename, dirname, extname, join } from "node:path";
 import type {
   LanguageModelV1Middleware,
   LanguageModelV1Prompt,
@@ -9,12 +17,12 @@ import type {
 const checkAndRolloverFile = async (filePath: string): Promise<void> => {
   try {
     // Check if file exists
-    if (!fs.existsSync(filePath)) {
+    if (!existsSync(filePath)) {
       return;
     }
 
     // Read the file content
-    const content = await fs.promises.readFile(filePath, "utf-8");
+    const content = await readFile(filePath, "utf-8");
     const lines = content.trim().split("\n");
 
     // If less than 50 lines, no need to rollover
@@ -23,13 +31,13 @@ const checkAndRolloverFile = async (filePath: string): Promise<void> => {
     }
 
     // Get the directory and base filename
-    const dir = path.dirname(filePath);
-    const ext = path.extname(filePath);
-    const baseName = path.basename(filePath, ext);
+    const dir = dirname(filePath);
+    const ext = extname(filePath);
+    const baseName = basename(filePath, ext);
     const basePattern = baseName.replace(/-\d+$/, ""); // Remove any existing number
 
     // Find existing rollover files to determine next number
-    const files = await fs.promises.readdir(dir);
+    const files = await readdir(dir);
     const rolloverFiles = files
       .filter((f) => f.startsWith(`${basePattern}-`) && f.endsWith(ext))
       .map((f) => {
@@ -39,10 +47,10 @@ const checkAndRolloverFile = async (filePath: string): Promise<void> => {
 
     const nextNumber =
       rolloverFiles.length > 0 ? Math.max(...rolloverFiles) + 1 : 1;
-    const newPath = path.join(dir, `${basePattern}-${nextNumber}${ext}`);
+    const newPath = join(dir, `${basePattern}-${nextNumber}${ext}`);
 
     // Rename the current file
-    await fs.promises.rename(filePath, newPath);
+    await rename(filePath, newPath);
   } catch (error) {
     console.error("Error during file rollover:", error);
     throw error; // Re-throw to be handled by the caller
@@ -62,26 +70,23 @@ const appendToFile = async (
 ): Promise<void> => {
   try {
     // Ensure directory exists
-    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await mkdir(dirname(filePath), { recursive: true });
     await checkAndRolloverFile(filePath);
-    await fs.promises.appendFile(filePath, `${JSON.stringify(content)}\n`);
+    await appendFile(filePath, `${JSON.stringify(content)}\n`);
   } catch (error) {
     console.error("Error writing to audit file:", error);
     throw error;
   }
 };
 
-const writeFile = async (
+const writeAuditRecord = async (
   filePath: string,
   content: AuditRecord,
 ): Promise<void> => {
   try {
     // Ensure directory exists
-    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.promises.writeFile(
-      filePath,
-      `${JSON.stringify(content, null, 2)}`,
-    );
+    await mkdir(dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(content, null, 2)}`);
   } catch (error) {
     console.error("Error writing audit file:", error);
     throw error;
@@ -89,9 +94,9 @@ const writeFile = async (
 };
 
 export const auditMessage = ({
-  path = "messages.jsonl",
+  filePath = "messages.jsonl",
   app = "default",
-}: { path: string; app: string }) => {
+}: { filePath: string; app: string }) => {
   const middleware: LanguageModelV1Middleware = {
     wrapGenerate: async ({ doGenerate, params, model }) => {
       try {
@@ -112,10 +117,16 @@ export const auditMessage = ({
           timestamp: Date.now(),
         };
 
-        if (path.endsWith("jsonl")) {
-          await appendToFile(path, msg);
+        if (filePath.endsWith("jsonl")) {
+          await appendToFile(filePath, msg);
         } else {
-          writeFile(path, msg);
+          const now = new Date();
+          const path = join(
+            filePath,
+            `${now.toISOString()}-${app}-message.json`,
+          );
+
+          await writeAuditRecord(path, msg);
         }
 
         return result;
@@ -159,10 +170,16 @@ export const auditMessage = ({
               timestamp: Date.now(),
             };
 
-            if (path.endsWith("jsonl")) {
-              await appendToFile(path, msg);
+            if (filePath.endsWith("jsonl")) {
+              await appendToFile(filePath, msg);
             } else {
-              writeFile(path, msg);
+              const now = new Date();
+              const path = join(
+                filePath,
+                `${now.toISOString()}-${app}-message.json`,
+              );
+
+              await writeAuditRecord(path, msg);
             }
           } catch (error) {
             console.error("Error in transform stream flush:", error);
