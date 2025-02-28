@@ -35,11 +35,6 @@ Provide a comprehensive summmary of the provided document.`;
             const res = await generateText({
               model: summarizationModel,
               maxTokens: 8096,
-              providerOptions: {
-                anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 2000 },
-                },
-              },
               maxSteps: 5,
               // biome-ignore lint/style/useNamingConvention: <explanation>
               experimental_continueSteps: true,
