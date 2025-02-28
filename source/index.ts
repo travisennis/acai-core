@@ -6,6 +6,7 @@ export {
   isSupportedModel,
   languageModel,
 } from "./providers.ts";
+export { getLanguageModel } from "./getLanguageModel.ts";
 export { wrapLanguageModel } from "./wrapLanguageModel.ts";
 export { type Dedent, dedent } from "./dedent.ts";
 export {
