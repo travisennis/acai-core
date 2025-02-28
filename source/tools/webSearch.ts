@@ -5,15 +5,21 @@ import {
   generateText,
   tool,
 } from "ai";
+import { SafeSearchType, type SearchResults, search } from "duck-duck-scrape";
 import { getJson } from "serpapi";
 import { z } from "zod";
+import type { TokenTracker } from "../tokenTracker.ts";
 import type { SendData } from "./types.ts";
-import { SafeSearchType, search, type SearchResults } from "duck-duck-scrape";
 
 export const createWebSearchTools = ({
   model,
+  tokenTracker,
   sendData,
-}: { model: LanguageModel; sendData?: SendData }) => {
+}: {
+  model: LanguageModel;
+  sendData?: SendData;
+  tokenTracker?: TokenTracker;
+}) => {
   return {
     searchLinks: tool({
       description:
@@ -53,10 +59,11 @@ export const createWebSearchTools = ({
           event: "tool-init",
           data: `Searching the web for an answer with query: ${query}`,
         });
-        const { text, providerMetadata } = await searchWithGrounding(
+        const { text, providerMetadata, usage } = await searchWithGrounding(
           model,
           query,
         );
+        tokenTracker?.trackUsage("grounding-search", usage);
         sendData?.({
           event: "tool-completion",
           data: `Successfully generated answer for query: ${query}`,
