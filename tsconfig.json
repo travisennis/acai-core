@@ -7,6 +7,7 @@
     "composite": true,
     "moduleResolution": "Bundler",
     "strict": true,
+    "erasableSyntaxOnly": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "exactOptionalPropertyTypes": false,
