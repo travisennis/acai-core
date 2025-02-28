@@ -42,22 +42,25 @@ const openrouter = customProvider({
 const anthropic = customProvider({
   languageModels: {
     opus: originalAnthropic("claude-3-opus-20240229"),
-    sonnet: createAnthropic({
+    sonnet: originalAnthropic("claude-3-7-sonnet-20250219"),
+    "sonnet-token-efficient-tools": createAnthropic({
+      headers: {
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "token-efficient-tools-2025-02-19",
+      },
+    })("claude-3-7-sonnet-20250219"),
+    "sonnet-128k": createAnthropic({
       headers: {
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "output-128k-2025-02-19",
       },
-    })("claude-3-7-sonnet-20250219", {
-      cacheControl: true,
-    }),
+    })("claude-3-7-sonnet-20250219"),
     sonnet35: createAnthropic({
       headers: {
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "max-tokens-3-5-sonnet-2024-07-15",
       },
-    })("claude-3-5-sonnet-20241022", {
-      cacheControl: true,
-    }),
+    })("claude-3-5-sonnet-20241022"),
     haiku: originalAnthropic("claude-3-5-haiku-20241022"),
   },
   fallbackProvider: originalAnthropic,
@@ -125,6 +128,8 @@ const registry = createProviderRegistry({
 
 export const Models = [
   "anthropic:sonnet",
+  "anthropic:sonnet-token-efficient-tools",
+  "anthropic:sonnet-128k",
   "anthropic:sonnet35",
   "anthropic:opus",
   "anthropic:haiku",
@@ -187,6 +192,18 @@ export const ModelConfig: Record<
   }
 > = {
   "anthropic:sonnet": {
+    maxOutputTokens: 64_000,
+    promptFormat: "xml",
+    reasoningModel: true,
+    supportsToolCalling: true,
+  },
+  "anthropic:sonnet-token-efficient-tools": {
+    maxOutputTokens: 64_000,
+    promptFormat: "xml",
+    reasoningModel: true,
+    supportsToolCalling: true,
+  },
+  "anthropic:sonnet-128k": {
     maxOutputTokens: 128_000,
     promptFormat: "xml",
     reasoningModel: true,
