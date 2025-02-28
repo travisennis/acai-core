@@ -25,7 +25,7 @@ export class ObjectGenerator {
   private tokenTracker: TokenTracker;
 
   constructor(tokenTracker?: TokenTracker) {
-    this.tokenTracker = tokenTracker || new TokenTracker();
+    this.tokenTracker = tokenTracker ?? new TokenTracker();
   }
 
   async generateObject<T>(
