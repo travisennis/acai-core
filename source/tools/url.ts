@@ -1,23 +1,55 @@
-import { tool } from "ai";
-import { load, type CheerioAPI } from "cheerio";
+import { generateText, type LanguageModel, tool } from "ai";
+import { type CheerioAPI, load } from "cheerio";
 import { z } from "zod";
+import type { TokenTracker } from "../tokenTracker.ts";
 import type { SendData } from "./types.ts";
 
-export const createUrlTools = (options: { sendData?: SendData } = {}) => {
-  const { sendData } = options;
+export const createUrlTools = (options: {
+  summarizationModel: LanguageModel;
+  tokenTracker?: TokenTracker;
+  sendData?: SendData;
+}) => {
+  const { summarizationModel, tokenTracker, sendData } = options;
   return {
     readUrl: tool({
       description: "Reads the contents of the file at the given url.",
       parameters: z.object({
         url: z.string().describe("The URL"),
+        returnSummary: z.boolean().optional().default(true),
       }),
-      execute: ({ url }) => {
+      execute: async ({ url, returnSummary }) => {
         try {
           sendData?.({
             event: "tool-init",
             data: `Reading URL for ${url}`,
           });
-          return readUrl(url);
+          const urlContent = await readUrl(url);
+          if (returnSummary) {
+            const prompt = `
+<document>
+${urlContent}
+</document>
+
+Provide a comprehensive summmary of the provided document.`;
+
+            const res = await generateText({
+              model: summarizationModel,
+              maxTokens: 8096,
+              providerOptions: {
+                anthropic: {
+                  thinking: { type: "enabled", budgetTokens: 2000 },
+                },
+              },
+              maxSteps: 5,
+              // biome-ignore lint/style/useNamingConvention: <explanation>
+              experimental_continueSteps: true,
+              prompt,
+            });
+
+            tokenTracker?.trackUsage("pdf-summarizer", res.usage);
+            return res.text;
+          }
+          return urlContent;
         } catch (error) {
           sendData?.({
             event: "tool-error",
