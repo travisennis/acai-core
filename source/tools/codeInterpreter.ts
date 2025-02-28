@@ -49,11 +49,11 @@ export const createCodeInterpreterTool = ({
   return {
     codeInterpreter: tool({
       description:
-        "Executes Javascript code. The code will be executed in a node:vm environment. This tool will respond with the output of the execution or time out after 120.0 seconds. In order to return a result from running this code, use a return statement. Do not use console.log. The code will run inside of self-executing anonymous function: `(function() { ${code} })()` Internet access for this session is disabled. Do not make external web requests or API calls as they will fail. Fileystem access for this vm is disabled. Do not make filesystem calls as they will fail.",
+        "Executes Javascript code. The code will be executed in a node:vm environment. This tool will respond with the output of the execution or time out after 120.0 seconds. In order to return a result from running this code, use a return statement. Do not use console.log. The code will run inside of self-executing anonymous function: `(function() { ${code} })()` Internet access for this session is disabled. Do not make external web requests or API calls as they will fail. Fileystem access for this vm is disabled. Do not make filesystem calls as they will fail. Dot use require.",
       parameters: z.object({
         code: z.string().describe("Javascript code to be executed."),
       }),
-      execute: ({ code }: { code: string }) => {
+      execute: ({ code }) => {
         try {
           sendData?.({
             event: "tool-init",
@@ -67,7 +67,7 @@ export const createCodeInterpreterTool = ({
             data: "Code execution completed successfully",
           });
 
-          return result;
+          return Promise.resolve(JSON.stringify(result, null, 2));
         } catch (err) {
           const errorMessage =
             (err as Error).name === "TimeoutError"
@@ -79,7 +79,7 @@ export const createCodeInterpreterTool = ({
             data: errorMessage,
           });
 
-          return errorMessage;
+          return Promise.resolve(errorMessage);
         }
       },
     }),
