@@ -112,11 +112,14 @@ function asyncExec(
     code: number;
   }>();
   try {
+    const [cmd, ...args] = command.split(" ");
     execFile(
-      command,
+      cmd,
+      args,
       {
         cwd,
         timeout: 10 * 60 * 1000,
+        shell: true,
       },
       (error, stdout, stderr) => {
         if (error) {
