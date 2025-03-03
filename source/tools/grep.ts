@@ -94,9 +94,10 @@ export function grepFiles(
     // Build the ripgrep command
     let command = "rg";
 
-    // Add options
-    if (recursive) {
-      command += " --recursive";
+    // Ripgrep is recursive by default, so we only need to add
+    // --no-recursive if recursive is false
+    if (recursive === false) {
+      command += " --no-recursive";
     }
 
     if (ignoreCase) {
