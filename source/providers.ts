@@ -39,14 +39,44 @@ const openrouter = customProvider({
   fallbackProvider: openRouterClient,
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function addCacheControlToTools(body: string) {
+  const parsedBody = JSON.parse(body);
+  if (isRecord(parsedBody)) {
+    const tools = parsedBody.tools;
+    if (Array.isArray(tools)) {
+      tools.at(-1).cache_control = { type: "ephemeral" };
+    }
+  }
+  return JSON.stringify(parsedBody);
+}
+
 const anthropic = customProvider({
   languageModels: {
     opus: originalAnthropic("claude-3-opus-20240229"),
-    sonnet: originalAnthropic("claude-3-7-sonnet-20250219"),
+    sonnet: createAnthropic({
+      fetch(input, init) {
+        const body = init?.body;
+        if (body && typeof body === "string") {
+          init.body = addCacheControlToTools(body);
+        }
+        return fetch(input, init);
+      },
+    })("claude-3-7-sonnet-20250219"),
     "sonnet-token-efficient-tools": createAnthropic({
       headers: {
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "token-efficient-tools-2025-02-19",
+      },
+      fetch(input, init) {
+        const body = init?.body;
+        if (body && typeof body === "string") {
+          init.body = addCacheControlToTools(body);
+        }
+        return fetch(input, init);
       },
     })("claude-3-7-sonnet-20250219"),
     "sonnet-128k": createAnthropic({
@@ -54,11 +84,25 @@ const anthropic = customProvider({
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "output-128k-2025-02-19",
       },
+      fetch(input, init) {
+        const body = init?.body;
+        if (body && typeof body === "string") {
+          init.body = addCacheControlToTools(body);
+        }
+        return fetch(input, init);
+      },
     })("claude-3-7-sonnet-20250219"),
     sonnet35: createAnthropic({
       headers: {
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "max-tokens-3-5-sonnet-2024-07-15",
+      },
+      fetch(input, init) {
+        const body = init?.body;
+        if (body && typeof body === "string") {
+          init.body = addCacheControlToTools(body);
+        }
+        return fetch(input, init);
       },
     })("claude-3-5-sonnet-20241022"),
     haiku: originalAnthropic("claude-3-5-haiku-20241022"),
