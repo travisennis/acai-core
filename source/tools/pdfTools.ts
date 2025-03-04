@@ -7,7 +7,7 @@ import {
   tool,
 } from "ai";
 import { getDocument } from "pdfjs-dist";
-import type { TextItem } from "pdfjs-dist/types/src/display/api";
+import type { TextItem } from "pdfjs-dist/types/src/display/api.js";
 import { z } from "zod";
 import type { TokenTracker } from "../tokenTracker.ts";
 import type { SendData } from "./types.ts";

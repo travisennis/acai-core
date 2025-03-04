@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
+    "rootDir": ".",
     "outDir": "./dist",
     "target": "ESNext",
-    "module": "ESNext",
+    "module": "NodeNext",
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "declaration": true,
+    "declarationMap": true,
     "composite": true,
-    "moduleResolution": "Bundler",
     "strict": true,
     "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "exactOptionalPropertyTypes": false,
@@ -18,14 +23,18 @@
     "noUncheckedIndexedAccess": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "isolatedModules": true,
     "checkJs": true,
-    "skipLibCheck": true,
-    "rewriteRelativeImportExtensions": true,
-    "types": ["node"],
-    "lib": ["ESNext"]
+    "resolveJsonModule": true,
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ESNext"
+    ]
   },
-  "include": ["source/**/*.ts"],
+  "include": [
+    "source/**/*.ts"
+  ],
   "$schema": "https://json.schemastore.org/tsconfig",
   "_version": "2.0.0"
 }
