@@ -1,6 +1,5 @@
+import { createSearch } from "@travisennis/arxiv-api";
 import { tool } from "ai";
-import arxivClient, { and, category, all } from "arxiv-client";
-import type { Category } from "arxiv-client/dist/defines/categories";
 import { z } from "zod";
 import type { SendData } from "./types.ts";
 
@@ -78,13 +77,14 @@ export const createArxivTools = ({
             event: "tool-init",
             data: `Search arxiv: ${query}`,
           });
-          const articles = await arxivClient
-            .query(and(category("cs.*" as Category), all(query)))
-            .start(0)
+          const articles = await createSearch()
+            .withQuery(query)
+            .inCategory("cs*")
+            .startAt(0)
             .maxResults(20)
             .sortBy("lastUpdatedDate")
             .sortOrder("ascending")
-            .execute();
+            .search();
 
           sendData?.({
             event: "tool-completion",

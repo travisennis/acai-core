@@ -22,10 +22,7 @@
     }
   },
   "packageManager": "npm",
-  "keywords": [
-    "ai",
-    "llm"
-  ],
+  "keywords": ["ai", "llm"],
   "author": "Travis Ennis",
   "license": "MIT",
   "scripts": {
@@ -50,8 +47,8 @@
     "@ai-sdk/deepseek": "^0.1.12",
     "@ai-sdk/google": "^1.1.18",
     "@ai-sdk/openai": "^1.1.15",
+    "@travisennis/arxiv-api": "^0.0.2",
     "ai": "^4.1.50",
-    "arxiv-client": "^0.0.9",
     "better-sqlite3": "^11.8.1",
     "cheerio": "^1.0.0",
     "diff": "^7.0.0",
