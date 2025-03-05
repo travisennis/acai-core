@@ -42,13 +42,13 @@
     "check": "npx npm-check-updates  --interactive --format group"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.1.13",
-    "@ai-sdk/azure": "^1.1.15",
-    "@ai-sdk/deepseek": "^0.1.12",
-    "@ai-sdk/google": "^1.1.18",
-    "@ai-sdk/openai": "^1.1.15",
+    "@ai-sdk/anthropic": "^1.1.15",
+    "@ai-sdk/azure": "^1.2.1",
+    "@ai-sdk/deepseek": "^0.1.13",
+    "@ai-sdk/google": "^1.1.20",
+    "@ai-sdk/openai": "^1.2.1",
     "@travisennis/arxiv-api": "^0.0.2",
-    "ai": "^4.1.50",
+    "ai": "^4.1.53",
     "better-sqlite3": "^11.8.1",
     "cheerio": "^1.0.0",
     "diff": "^7.0.0",
@@ -67,7 +67,7 @@
     "@biomejs/biome": "1.9.4",
     "@types/better-sqlite3": "^7.6.12",
     "@types/diff": "^7.0.1",
-    "@types/node": "^22.13.8"
+    "@types/node": "^22.13.9"
   },
   "publishConfig": {
     "access": "public"
