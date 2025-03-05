@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type {
   CoreAssistantMessage,
   CoreMessage,
@@ -49,8 +51,10 @@ export function appendResponseMessages(
 
 export class MessageHistory {
   private history: CoreMessage[];
-  constructor() {
+  private stateDir: string;
+  constructor({ stateDir }: { stateDir: string }) {
     this.history = [];
+    this.stateDir = stateDir;
   }
 
   get() {
@@ -75,5 +79,14 @@ export class MessageHistory {
 
   isEmpty() {
     return this.history.length === 0;
+  }
+
+  async save() {
+    await mkdir(this.stateDir, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/:/g, "-");
+    const fileName = `message-history-${timestamp}.json`;
+    const filePath = join(this.stateDir, fileName);
+
+    await writeFile(filePath, JSON.stringify(this.history, null, 2));
   }
 }
