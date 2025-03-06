@@ -6,6 +6,8 @@ import { simpleGit } from "simple-git";
 import { z } from "zod";
 import type { SendData } from "./types.ts";
 
+const mdQuotes = "```";
+
 const CONVENTIONAL_COMMIT_MESSAGE =
   /^(feat|fix|docs|style|refactor|perf|test|chore)(\(\w+\))?!?: .+/;
 
@@ -74,7 +76,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       description:
         "A tool to create a new git branch and switch to it. (Git command: `git checkout -b`)",
       parameters: z.object({
-        path: z.string().describe("The path to the git repo."),
+        path: z.string().describe("The absolute path to the git repo."),
         name: z.string().describe("The name of the git branch."),
       }),
       execute: async ({ path, name }) => {
@@ -120,12 +122,12 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       description:
         "Commits a new git changeset for the given files with the provided commit message. It will stage the files given if they aren't already staged. The commit message should adhere to the Conventional Commits standard. (Git command: `git add` + `git commit`)",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("The absolute path to the git repo."),
         message: z.string().describe("The commit message."),
         files: z
           .string()
           .describe(
-            "A command-separated list of files to include in this commit.",
+            "A command-separated list of files to include in this commit. IMPORTANT: use absolute paths for all files",
           ),
       }),
       execute: async ({ path, message, files }) => {
@@ -203,7 +205,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       description:
         "Get the status of the git repo at the given path. (Git command: `git status`)",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("The absolute path to the git repo."),
       }),
       execute: async ({ path }) => {
         sendData?.({
@@ -225,7 +227,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
             return "No changes found.";
           }
 
-          const statusMessage = `Status:\n ${JSON.stringify(status, undefined, 2)}`;
+          const statusMessage = `Status:\n ${mdQuotes} json\n${JSON.stringify(status, undefined, 2)}\n${mdQuotes}`;
           sendData?.({
             event: "tool-completion",
             data: statusMessage,
@@ -246,7 +248,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       description:
         "Gets the log of the git repo at the given path. Unless told otherwise, will return the 3 most recent commits. (Git command: `git log --max-count=n`)",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("The absolute path to the git repo."),
         n: z
           .number()
           .optional()
@@ -265,7 +267,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
           const git = simpleGit({ baseDir });
 
           const log = await git.log({ maxCount: n ?? 3 });
-          const logMessage = `Log:\n ${JSON.stringify(log, undefined, 2)}`;
+          const logMessage = `Log:\n${mdQuotes} json\n${JSON.stringify(log, undefined, 2)}\n${mdQuotes}`;
           sendData?.({
             event: "tool-completion",
             data: logMessage,
@@ -285,7 +287,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
     gitShow: tool({
       description: "Shows the contents of a commit. (Git command: `git show`)",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("The absolute path to the git repo."),
         revision: z.string(),
       }),
       execute: async ({ path, revision }) => {
@@ -299,7 +301,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
           const git = simpleGit({ baseDir });
 
           const show = await git.show(revision);
-          const showMessage = `Show:\n ${JSON.stringify(show, undefined, 2)}`;
+          const showMessage = `Show:\n${mdQuotes} json\n${JSON.stringify(show, undefined, 2)}\n${mdQuotes}`;
           sendData?.({
             event: "tool-completion",
             data: showMessage,
@@ -320,7 +322,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       description:
         "Shows differences between branches or commits. (Git command: `git diff`)",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("The absolute path to the git repo."),
         target: z.string(),
       }),
       execute: async ({ path, target }) => {
@@ -333,12 +335,11 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff([target]);
-          const diffMessage = diff || "No changes detected.";
           sendData?.({
             event: "tool-completion",
-            data: diffMessage,
+            data: diff.length > 0 ? "Changes found" : "No changes detected.",
           });
-          return diffMessage;
+          return diff.length > 0 ? diff : "No changes detected.";
         } catch (error) {
           const errorMessage = `Error getting git diff: ${(error as Error).message}`;
           sendData?.({
@@ -354,7 +355,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       description:
         "Shows changes in the working directory that are not yet staged. (Git command: `git diff`)",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("The absolute path to the git repo."),
       }),
       execute: async ({ path }) => {
         sendData?.({
@@ -366,12 +367,11 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff();
-          const diffMessage = diff || "No changes detected.";
           sendData?.({
             event: "tool-completion",
-            data: diffMessage,
+            data: diff.length > 0 ? "Changes found" : "No changes detected.",
           });
-          return diffMessage;
+          return diff.length > 0 ? diff : "No changes detected.";
         } catch (error) {
           const errorMessage = `Error getting git diff: ${(error as Error).message}`;
           sendData?.({
@@ -387,7 +387,7 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
       description:
         "Shows changes that are staged for commit. (Git command: `git diff --cached`)",
       parameters: z.object({
-        path: z.string(),
+        path: z.string().describe("The absolute path to the git repo."),
       }),
       execute: async ({ path }) => {
         sendData?.({
@@ -399,12 +399,11 @@ export const createGitTools = async ({ workingDir, sendData }: GitOptions) => {
           const baseDir = sanitizePath(workingDir, path);
           const git = simpleGit({ baseDir });
           const diff = await git.diff(["--cached"]);
-          const diffMessage = diff || "No changes detected.";
           sendData?.({
             event: "tool-completion",
-            data: diffMessage,
+            data: diff.length > 0 ? "Changes found" : "No changes detected.",
           });
-          return diffMessage;
+          return diff.length > 0 ? diff : "No changes detected.";
         } catch (error) {
           const errorMessage = `Error getting git diff: ${(error as Error).message}`;
           sendData?.({
