@@ -123,7 +123,6 @@ function asyncExec(
       },
       (error, stdout, stderr) => {
         if (error) {
-          console.error(error);
           const errorCode = typeof error.code === "number" ? error.code : 1;
           resolve({
             stdout: stdout || "",
