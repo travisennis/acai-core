@@ -51,7 +51,7 @@
     "@ai-sdk/google": "^1.1.20",
     "@ai-sdk/openai": "^1.2.1",
     "@travisennis/arxiv-api": "^0.0.2",
-    "ai": "^4.1.53",
+    "ai": "^4.1.54",
     "better-sqlite3": "^11.8.1",
     "cheerio": "^1.0.0",
     "diff": "^7.0.0",
