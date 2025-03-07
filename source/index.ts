@@ -21,6 +21,5 @@ export { analyzeTypeScriptFile, outputFileStructure } from "./codeMap.ts";
 export {
   createUserMessage,
   createAssistantMessage,
-  appendResponseMessages,
   MessageHistory,
 } from "./messages.ts";
